@@ -93,16 +93,19 @@ class System(object):
         print("REPLICATION")
         print("=*40")
         print("\n")
-        new_generation = {}
-        for species, organisms in self.top_species.items():
-            new_generation[species] = []
+        new_generation = []
+        for speciesID, organisms in self.top_species.items():
+
+            new_organisms_list = []
             for index, parent_organism_1 in enumerate(organisms[:-1:2]):
                 parent_organism_2 = organisms[index+1]
 
                 for progeny_index in range(4):
-                    genes = parent_organism_1.mate(parent_organism_2)
-                    progeny = Organism(genes)
-                    new_generation[species].append(progeny)
+                    progeny = parent_organism_1.mate(parent_organism_2)
+                    new_organisms_list.append(progeny)
+
+            new_species = Species(new_organisms_list, speciesID)
+            new_generation.append(new_species)
 
         self.species = new_generation
 

@@ -24,8 +24,13 @@ class Organism(object):
             self.topology = [INPUTS, OUTPUTS]
         else:
             self.neurons = genes[1]
-            self.input_neurons = [self.neurons[:INPUTS]]
-            self.output_neuron = self.neurons[-1]
+            self.input_neurons = [neuron for neuron in self.neurons if neuron.layer == 'input']
+
+            for neuron in self.neurons:
+                if neuron.layer == 'output':
+                    self.output_neuron = neuron
+            
+
             self.synapse_network = genes[2]
             self.topology = genes[0]
 
@@ -118,83 +123,87 @@ class Organism(object):
         self._feed_forward()
 
 
+
+    def replicate_unique_genes(self, new_synapses, parent, parent_gene_list):
+        for gene_innovation_number in parent_gene_list:
+            print("Replicating Gene: {}".format(gene_innovation_number))
+
+            for synapse in parent.synapse_network.synapses:
+                if gene_innovation_number == synapse.innovation:
+                    new_synapse = synapse.copy()
+                    new_synapses.append(new_synapse)
+                    print("\tparent synapse: {}".format(synapse))
+                    print("\tchild synapse: {}".format(new_synapse))
+
+            print("\n")
+
+
     def mate(self, other):
+
         new_synapses = []
         new_neurons = []
+        new_neuron_ID_tracker = []
         new_topology = self.topology
 
         parent1_genes = self.synapse_network.gene_list
         parent2_genes = other.synapse_network.gene_list
-        combined_genes_list = np.unique(np.array(parent1_genes+parent2_genes))
+        print("\t\tParent 1 genes: {}".format(parent1_genes))
+        print("\t\tParent 2 genes: {}".format(parent2_genes))
+
 
         parent1_unique_genes_list = list(set(parent1_genes) - set(parent2_genes))
         parent2_unique_genes_list = list(set(parent2_genes) - set(parent1_genes))
         shared_genes = list(set(parent1_genes) & set(parent2_genes))
-        print("\t\tCombined Genes: {}".format(combined_genes_list))
-        print("\t\tShared Genes: {}".format(shared_genes))
-        print("\t\tUnique parent 1: {}".format(parent1_unique_genes_list))
-        print("\t\tUnique parent 2: {}".format(parent2_unique_genes_list))
 
-        if parent1_unique_genes_list:
-            for innovation_number in parent1_unique_genes_list:
-                for synapse in self.synapse_network:
-                    synapse_number = synapse.innovation
-                    if innovation_number == synapse_number:
-                        synapse_genetic_info = synapse.copy()
-                        neurons = synapse_genetic_info[:2]
-                        for new_neuron in neurons:
-                            for neuron in new_neurons:
-                                if new_neuron.neuronID != neuron.neuronID:
-                                    new_neurons.append(new_neuron)
+        print("\t\tGenes unique to parent 1: {}".format(parent1_unique_genes_list))
+        print("\t\tGenes unique to parent 2: {}".format(parent2_unique_genes_list))
+        print("\t\tShared Genes amongst parent 1 and 2: {}".format(shared_genes))
 
-                        new_synapse = Synapse(*synapse_genetic_info)
-                        new_synapses.append(new_synapse)
+        # Genes shared are 50/50 for inheritance
+        inherit_from = [self, other]
+        new_synapses = []
+        for gene_innovation_number in shared_genes:
+            print("Replicating Gene: {}".format(gene_innovation_number))
 
-        if parent2_unique_genes_list:
-            for innovation_number in parent2_unique_genes_list:
-                for synapse in other.synapse_network:
-                    synapse_number = synapse.innovation
-                    if innovation_number == synapse_number:
-                        synapse_genetic_info = synapse.copy()
-                        neurons = synapse_genetic_info[:2]
-                        for new_neuron in neurons:
-                            for neuron in new_neurons:
-                                if new_neuron.neuronID != neuron.neuronID:
-                                    new_neurons.append(new_neuron)
-                        new_synapse = Synapse(*synapse_genetic_info)
-                        new_synapses.append(new_synapse)
+            random_parent_index = np.random.randint(2)
 
-        for innovation_number in shared_genes:
-            random_parent_inherted_from = np.random.randint(2)
-            if random_parent_inherted_from == 0:
-                for synapse in self.synapse_network.synapses:
-                    synapse_number = synapse.innovation
-                    if innovation_number == synapse_number:
-                        synapse_genetic_info = synapse.copy()
-                        neurons = synapse_genetic_info[:2]
-                        for new_neuron in neurons:
-                            for neuron in new_neurons:
-                                if new_neuron.neuronID != neuron.neuronID:
-                                    new_neurons.append(new_neuron)
-                        new_synapse = Synapse(*synapse_genetic_info)
-                        new_synapses.append(new_synapse)
-            else:
-                for synapse in other.synapse_network.synapses:
-                    synapse_number = synapse.innovation
-                    if innovation_number == synapse_number:
-                        synapse_genetic_info = synapse.copy()
-                        neurons = synapse_genetic_info[:2]
-                        for new_neuron in neurons:
-                            for neuron in new_neurons:
-                                if new_neuron.neuronID != neuron.neuronID:
-                                    new_neurons.append(new_neuron)
-                        new_synapse = Synapse(*synapse_genetic_info)
-                        new_synapses.append(new_synapse)
-        print("NEW NEURONS: {}".format(new_neurons))
-        new_genome = Genome(new_synapses)
-        genes = [new_topology, new_neurons, new_genome]
 
-        return genes
+            for synapse in inherit_from[random_parent_index].synapse_network.synapses:
+                if gene_innovation_number == synapse.innovation:
+                    new_synapse = synapse.copy()
+                    new_synapses.append(new_synapse)
+                    print("\tparent synapse: {}".format(synapse))
+                    print("\tchild synapse: {}".format(new_synapse))
+
+
+                    new_ID = new_synapse.input_neuron.neuronID
+                    if new_ID not in new_neuron_ID_tracker:
+                        new_neuron_ID_tracker.append(new_synapse.input_neuron.neuronID)
+                        new_neurons.append(new_synapse.input_neuron)
+
+                    new_ID = new_synapse.output_neuron.neuronID
+                    if new_ID not in new_neuron_ID_tracker:
+                        new_neuron_ID_tracker.append(new_synapse.output_neuron.neuronID)
+                        new_neurons.append(new_synapse.output_neuron)
+
+
+            print("\n")
+        print("*** NEW NEURONS: {}".format(new_neurons))
+        print("type: {}".format(type(new_neurons)))
+
+        # Inherit unique genes from parent 1
+        self.replicate_unique_genes(new_synapses, self, parent1_unique_genes_list)
+
+        # Inherit unique genes from parent 2
+        self.replicate_unique_genes(new_synapses, other, parent2_unique_genes_list)
+
+
+        new_genes = [new_topology, new_neurons, Genome(new_synapses)]
+        new_organism = Organism(new_genes)
+
+
+
+        return new_organism
 
 
 

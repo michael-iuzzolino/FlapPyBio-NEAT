@@ -6,15 +6,18 @@ random.seed()
 class Species(object):
 	ID = 0
 
-	def __init__(self, organisms=[]):
+	def __init__(self, organisms=[], speciesID=None):
 
 		for organism in organisms:
 			organism.speciesID = Species.ID
 
 		self.organisms = organisms
 
-		self.ID = Species.ID
-		Species.ID += 1
+		if speciesID:
+			self.ID = speciesID
+		else:
+			self.ID = Species.ID
+			Species.ID += 1
 
 		self.genome = None
 		self._init_representative_genome()

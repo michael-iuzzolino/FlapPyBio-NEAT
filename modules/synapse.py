@@ -16,7 +16,7 @@ class Synapse(object):
         self.enabled = enabled
 
     def __repr__(self):
-    	return "Innovation number {}\n\tConnections: {} --> {}".format(self.innovation, self.input_neuron, self.output_neuron)
+    	return "Innovation number {}\n\t\tConnections: {} --> {}".format(self.innovation, self.input_neuron, self.output_neuron)
 
     def activate(self):
     	input_sum = 0
@@ -42,7 +42,9 @@ class Synapse(object):
         new_weight = np.copy(self.weight)
 
         enabled = self.enabled
-        return [new_input_neuron, new_output_neuron, innovation, new_weight, enabled]
+
+        new_synapse = Synapse(new_input_neuron, new_output_neuron, innovation, new_weight, enabled)
+        return new_synapse
 
 
 if __name__ == '__main__':

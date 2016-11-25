@@ -6,3 +6,7 @@ C1 = 0.4
 C2 = 0.4
 C3 = 1.0
 DELTA_T = 3  # New species threshold
+
+WEIGHT_MUTATION_RATE = 0.5
+LINK_MUTATION_RATE = 0.1
+NODE_MUTATION_RATE = 0.01

@@ -35,6 +35,7 @@ class System(object):
 
 
     def fitness(self, species):
+        print("\tNumber of organisms: {}".format(len(species.organisms)))
         flappy = FlappyBirdApp(species.organisms)
         flappy.play()
 
@@ -83,16 +84,14 @@ class System(object):
                 if rank < RANK_CUTOFF:
                     self.top_species[species_ID].append(organism)
 
-            print("length: {}".format(len(self.top_species[species_ID])))
-
 
 
     def replication(self):
-        print("\n")
-        print("="*40)
-        print("REPLICATION")
-        print("=*40")
-        print("\n")
+        # print("\n")
+        # print("="*40)
+        # print("REPLICATION")
+        # print("=*40")
+        # print("\n")
         new_generation = []
         for speciesID, organisms in self.top_species.items():
 
@@ -115,14 +114,14 @@ class System(object):
 
 
     def speciation(self):
-        print("\n")
-        print("="*40)
-        print("\tSpeciation")
-        print("="*40)
+        # print("\n")
+        # print("="*40)
+        # print("\tSpeciation")
+        # print("="*40)
         for species in self.species:
-            print("{}".format(species))
+            # print("{}".format(species))
             for organism in species.organisms:
-                print("\t{}".format(organism))
+                # print("\t{}".format(organism))
                 species.is_compatible(organism)
 
 
@@ -141,21 +140,22 @@ class System(object):
 
         if new_organisms:
             for new_organism in new_organisms:
-                print("\tNew organism: {}".format(new_organism))
+                # print("\tNew organism: {}".format(new_organism))
                 for new_species in new_species_list:
-                    print("\t\tChecking if compatible with species: {}".format(new_species))
+                    # print("\t\tChecking if compatible with species: {}".format(new_species))
                     new_species.is_compatible(new_organism)
 
                 if not new_organism.species_matched:
-                    print("\t\tNot matched. Creating new species")
+                    # print("\t\tNot matched. Creating new species")
                     new_species_list.append(Species([new_organism]))
-                else:
-                    print("\t\tMatched!")
-                print("\n")
+                # else:
+                #     print("\t\tMatched!")
+                # print("\n")
 
 
             for new_species in new_species_list[1:]:
                 self.species.append(new_species)
+        
 
 
 

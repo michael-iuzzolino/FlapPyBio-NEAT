@@ -7,6 +7,7 @@ from sklearn import preprocessing
 import numpy as np
 import random
 random.seed()
+import copy
 
 
 class Organism(object):
@@ -17,22 +18,23 @@ class Organism(object):
 
         if not genes:
             self.neurons = [Neuron(neuron_index) for neuron_index in range(INPUTS+OUTPUTS)]
-            self.input_neurons = []
-            self.output_neuron = self.neurons[-1]
+            self.input_neurons = None
+            self.output_neuron = None
             self.synapse_network = None
             self._init_synapse_network()
             self.topology = [INPUTS, OUTPUTS]
         else:
+            self.topology = genes[0]
             self.neurons = genes[1]
             self.input_neurons = [neuron for neuron in self.neurons if neuron.layer == 'input']
 
             for neuron in self.neurons:
                 if neuron.layer == 'output':
                     self.output_neuron = neuron
-            
+
 
             self.synapse_network = genes[2]
-            self.topology = genes[0]
+
 
 
         # Set unique ID
@@ -48,6 +50,9 @@ class Organism(object):
         return "Network {} -- Species ID {} -- Toplogy: {} -- Fitness: {} -- Rank: {}".format(self.ID, self.speciesID, self.topology, self.fitness, self.intra_species_rank)
 
     def _init_synapse_network(self):
+        self.input_neurons = []
+        self.output_neuron = self.neurons[-1]
+
         self.output_neuron.layer = 'output'
         new_synapses = []
         for input_index in range(INPUTS):
@@ -109,13 +114,13 @@ class Organism(object):
     def learn(self, environment_information):
         # Normalize information
         information = preprocessing.scale(np.asarray(environment_information))
-        print("Input Evironment Info: {}".format(information))
+        # print("Input Evironment Info: {}".format(information))
 
         # Load input neurons
         for input_val, input_neuron in zip(information, self.input_neurons):
             for synapse in input_neuron.synapses:
                 weight = synapse.weight
-                print("weight: {}".format(weight))
+                # print("weight: {}".format(weight))
                 synapse.output_neuron.inputs.append(input_val*weight)
 
 
@@ -126,44 +131,44 @@ class Organism(object):
 
     def replicate_unique_genes(self, new_synapses, parent, parent_gene_list):
         for gene_innovation_number in parent_gene_list:
-            print("Replicating Gene: {}".format(gene_innovation_number))
+            # print("Replicating Gene: {}".format(gene_innovation_number))
 
             for synapse in parent.synapse_network.synapses:
                 if gene_innovation_number == synapse.innovation:
                     new_synapse = synapse.copy()
                     new_synapses.append(new_synapse)
-                    print("\tparent synapse: {}".format(synapse))
-                    print("\tchild synapse: {}".format(new_synapse))
+                    # print("\tparent synapse: {}".format(synapse))
+                    # print("\tchild synapse: {}".format(new_synapse))
 
-            print("\n")
+            # print("\n")
 
 
     def mate(self, other):
 
-        new_synapses = []
-        new_neurons = []
         new_neuron_ID_tracker = []
         new_topology = self.topology
 
         parent1_genes = self.synapse_network.gene_list
         parent2_genes = other.synapse_network.gene_list
-        print("\t\tParent 1 genes: {}".format(parent1_genes))
-        print("\t\tParent 2 genes: {}".format(parent2_genes))
+        # print("\t\tParent 1 genes: {}".format(parent1_genes))
+        # print("\t\tParent 2 genes: {}".format(parent2_genes))
 
 
         parent1_unique_genes_list = list(set(parent1_genes) - set(parent2_genes))
         parent2_unique_genes_list = list(set(parent2_genes) - set(parent1_genes))
         shared_genes = list(set(parent1_genes) & set(parent2_genes))
 
-        print("\t\tGenes unique to parent 1: {}".format(parent1_unique_genes_list))
-        print("\t\tGenes unique to parent 2: {}".format(parent2_unique_genes_list))
-        print("\t\tShared Genes amongst parent 1 and 2: {}".format(shared_genes))
+        # print("\t\tGenes unique to parent 1: {}".format(parent1_unique_genes_list))
+        # print("\t\tGenes unique to parent 2: {}".format(parent2_unique_genes_list))
+        # print("\t\tShared Genes amongst parent 1 and 2: {}".format(shared_genes))
 
         # Genes shared are 50/50 for inheritance
         inherit_from = [self, other]
         new_synapses = []
+        new_neurons = []
+
         for gene_innovation_number in shared_genes:
-            print("Replicating Gene: {}".format(gene_innovation_number))
+            # print("Replicating Gene: {}".format(gene_innovation_number))
 
             random_parent_index = np.random.randint(2)
 
@@ -172,30 +177,54 @@ class Organism(object):
                 if gene_innovation_number == synapse.innovation:
                     new_synapse = synapse.copy()
                     new_synapses.append(new_synapse)
-                    print("\tparent synapse: {}".format(synapse))
-                    print("\tchild synapse: {}".format(new_synapse))
+                    # print("\tparent synapse: {}".format(synapse))
+                    # print("\tchild synapse: {}".format(new_synapse))
 
-
+                    # Update neurons
                     new_ID = new_synapse.input_neuron.neuronID
+                    # print("\tNew id: {}".format(new_ID))
                     if new_ID not in new_neuron_ID_tracker:
                         new_neuron_ID_tracker.append(new_synapse.input_neuron.neuronID)
                         new_neurons.append(new_synapse.input_neuron)
 
                     new_ID = new_synapse.output_neuron.neuronID
+                    # print("\tNew id: {}".format(new_ID))
                     if new_ID not in new_neuron_ID_tracker:
                         new_neuron_ID_tracker.append(new_synapse.output_neuron.neuronID)
                         new_neurons.append(new_synapse.output_neuron)
 
 
-            print("\n")
-        print("*** NEW NEURONS: {}".format(new_neurons))
-        print("type: {}".format(type(new_neurons)))
+
+
+            # print("\n")
+
 
         # Inherit unique genes from parent 1
         self.replicate_unique_genes(new_synapses, self, parent1_unique_genes_list)
 
         # Inherit unique genes from parent 2
         self.replicate_unique_genes(new_synapses, other, parent2_unique_genes_list)
+
+        # mutate
+        link_chance = np.random.uniform()
+        new_node_chance = np.random.uniform()
+
+
+        # check weights
+        for synapse in new_synapses:
+            weight_change_chance = np.random.uniform()
+            if weight_change_chance <= WEIGHT_MUTATION_RATE:
+                magnitude_change = np.random.randn()
+                synapse.weight += magnitude_change
+
+        if link_chance <= LINK_MUTATION_RATE:
+            pass
+
+        if new_node_chance <= NODE_MUTATION_RATE:
+            pass
+
+
+
 
 
         new_genes = [new_topology, new_neurons, Genome(new_synapses)]
@@ -212,15 +241,15 @@ class Organism(object):
 
     def _feed_forward(self):
         for synapse in self.synapse_network.synapses[INPUTS:]:
-            print("Synapse: {}".format(synapse))
+            # print("Synapse: {}".format(synapse))
             synapse.activate()
             synapse.inactivate()
 
 
     def decision(self):
         output = self.output_neuron.activate()
-        print("Decision: {}".format("not flap" if output == 0 else "flap"))
-        print("\n")
+        # print("Decision: {}".format("not flap" if output == 0 else "flap"))
+        # print("\n")
         return output
 
 

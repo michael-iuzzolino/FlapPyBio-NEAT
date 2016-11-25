@@ -25,10 +25,10 @@ class Synapse(object):
     		input_sum += input_value
 
     	input_sum = 1.0 / (1.0 + np.exp(-input_sum))
-    	print("\t\tInput value: {}".format(input_sum))
+    	# print("\t\tInput value: {}".format(input_sum))
 
     	output_value = input_sum * self.weight
-    	print("\t\tOutput value: {}\n".format(output_value))
+    	# print("\t\tOutput value: {}\n".format(output_value))
 
     	self.output_neuron.inputs.append(output_value)
 
@@ -44,6 +44,9 @@ class Synapse(object):
         enabled = self.enabled
 
         new_synapse = Synapse(new_input_neuron, new_output_neuron, innovation, new_weight, enabled)
+
+        new_input_neuron.add_synapse(new_synapse)
+
         return new_synapse
 
 

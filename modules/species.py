@@ -34,8 +34,8 @@ class Species(object):
 
 		organism_genome = organism.synapse_network
 
-		print("\t\tOrganism Genome: {}".format(organism_genome))
-		print("\t\tSpecies Genome: {}".format(self.genome))
+		# print("\t\tOrganism Genome: {}".format(organism_genome))
+		# print("\t\tSpecies Genome: {}".format(self.genome))
 
 
 		# Calculate excess genes, E

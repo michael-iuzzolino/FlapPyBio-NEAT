@@ -29,12 +29,12 @@ class Neuron(object):
     def activate(self):
         input_sums = 0.0
         for input_value in self.inputs:
-            print("\t\t\tinput value: {}".format(input_value))
+            # print("\t\t\tinput value: {}".format(input_value))
             input_sums += input_value
 
         output = 0 if input_sums <= 0.5 else 1
         self.inactivate()
-        print("\tFinal Output: {}".format(output))
+        # print("\tFinal Output: {}".format(output))
         return output
 
     def inactivate(self):

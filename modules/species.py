@@ -14,15 +14,20 @@ class Species(object):
 			4. CULLING - removes unfit organisms from the species (this may also include species that evolve towards other speices)
 	"""
 
-	def __init__(self, species_id=None, organisms=[]):
+	def __init__(self, species_id=None, generation_number=0, organisms=[], total_fitness=0.0, cull=False):
 		if not organisms:
 			organisms = [Organism() for _ in range(ORGANISMS)]
 		self.organisms = organisms
 
 		self.ID = species_id
-
+		self.generation_number = generation_number
 		self.representative_genome = self.organisms[0].genome # Set to genome of first species, since all species will be the same on init
 
+		self.total_fitness = total_fitness
+		self.cull = cull
+		self.improvement = 0.0
+
+		
 
 	def is_compatible(self, organism):
 
@@ -49,6 +54,23 @@ class Species(object):
 			# Check if species exists already
 			#self.add(organism)
 			organism.species_matched = True
+
+
+	def species_fitness_sum(self):
+		previous_fitness = self.total_fitness
+		new_fitness = 0.0
+		for organism in self.organisms:
+			new_fitness += organism.fitness
+
+		fitness_change = new_fitness - previous_fitness
+		self.total_fitness = new_fitness
+		# Determine culling and improvement
+
+		self.improvement += fitness_change
+
+
+		if self.generation_number % 5 == 4:
+			self.cull = True
 
 
 	def __repr__(self):

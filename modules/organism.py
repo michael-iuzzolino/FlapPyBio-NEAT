@@ -34,7 +34,9 @@ class Organism(object):
         # Additional attributes
         intra_species_rank = None
 
+        self.number_progeny = None
 
+        
     def learn(self, information):
         # Normalize input
         information = np.asarray(information).reshape(1, -1)

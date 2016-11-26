@@ -33,11 +33,13 @@ class Bird(object):
     def flap_decision(self, pipes):
 
         # Setup the input layer
-        X = [0 for _ in range(4)]
+        X = [0 for _ in range(6)]
         X[0] = self.y / SCREENHEIGHT
         X[1] = pipes.upper[0]['x'] / SCREENWIDTH
         X[2] = pipes.upper[0]['y'] / SCREENHEIGHT
-        X[3] = 1
+        X[3] = pipes.upper[1]['x'] / SCREENWIDTH
+        X[4] = pipes.upper[1]['y'] / SCREENHEIGHT
+        X[5] = 1
         # Feed the neural network information
         self.neural_network.learn(X)
 
@@ -58,6 +60,7 @@ class Bird(object):
             self.flapped = False
         playerHeight = IMAGES['player'][self.index].get_height()
         self.y += min(self.y_velocity, BASEY - self.y - playerHeight)
+
 
     def check_crash(self, pipes, basex, score):
         self.check_collision(pipes)

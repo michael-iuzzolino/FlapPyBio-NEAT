@@ -23,16 +23,16 @@ def displayStat(SCREEN, stat, text=None):
 
       elif text == "distance":
           for digit in scoreDigits:
-              SCREEN.blit(IMAGES['numbers'][digit], (Xoffset + 100, 473))
+              SCREEN.blit(IMAGES['numbers'][digit], (Xoffset, 473))
               Xoffset += IMAGES['numbers'][digit].get_width()
-          SCREEN.blit(IMAGES[text], (205, 440))
+          SCREEN.blit(IMAGES[text], (SCREENWIDTH / 2.5, 440))
 
       elif text == "scores":
           """displays score in center of screen"""
 
           for digit in scoreDigits:
-              SCREEN.blit(IMAGES['numbers'][digit], (130, 45))
-
+              SCREEN.blit(IMAGES['numbers'][digit], (Xoffset, 45))
+              Xoffset += IMAGES['numbers'][digit].get_width()
           SCREEN.blit(IMAGES[text], (105, 15))
 
       elif text == "topology":

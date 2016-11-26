@@ -6,6 +6,10 @@ import numpy as np
 import copy
 
 
+"""
+    Need to add unique neurons during mating!
+"""
+
 class Genome(object):
     """
         The genome is a linear sequence of genes, wherein the gene indicates a single connection in the network.
@@ -40,6 +44,7 @@ class Genome(object):
 
         # Useful for mutations later on
         self.neuron_ids = [neuron_id for neuron_id in self.neurons.keys()]
+        self.innovation_numbers = None
         self._generate_ave_gene_weight()
 
     def _generate_ave_gene_weight(self):
@@ -51,14 +56,11 @@ class Genome(object):
     def prime_inputs(self, information):
 
         for neuron_id, neuron in self.neurons.items():
-            if neuron_id == 0:
-                neuron.output = information[0][0]
-            elif neuron_id == 1:
-                neuron.output = information[0][1]
-            elif neuron_id == 2:
-                neuron.output = information[0][2]
-            elif neuron_id == 3:
-                neuron.output = information[0][3]
+            if neuron_id < INPUTS:
+                neuron.output = information[0][neuron_id]
+            else:
+                return
+
 
 
 
@@ -77,8 +79,9 @@ class Genome(object):
                 input_neuron = self.neurons[gene.input_neuron_id]
                 neuron.input += gene.weight * input_neuron.output
 
-            neuron.output = 1.0 / (1.0 + np.exp(-1.0 * neuron.input))
-
+            # neuron.output = 1.0 / (1.0 + np.exp(-1.0 * neuron.input))
+            neuron.output = 2.0 / (1.0 + np.exp(-4.9 * neuron.input)) - 1.0
+            
             # Reset neuron.input to 0?
             neuron.input = 0.0
 
@@ -113,13 +116,13 @@ class Genome(object):
         parent_1_unique_genes_innovation_list = parent_1_genes_innovation_list - parent_2_genes_innovation_list
         parent_2_unique_genes_innovation_list = parent_2_genes_innovation_list - parent_1_genes_innovation_list
 
-        print("Parent 1 Genes: {}".format(parent_1_genes_innovation_list))
-        print("Parent 2 Genes: {}".format(parent_2_genes_innovation_list))
-        print("Common Genes: {}".format(common_genes))
-        print("Parent 1 Unique Genes: {}".format(parent_1_unique_genes_innovation_list))
-        print("Parent 2 Unique Genes: {}".format(parent_2_unique_genes_innovation_list))
-
-        print("\n")
+        # print("Parent 1 Genes: {}".format(parent_1_genes_innovation_list))
+        # print("Parent 2 Genes: {}".format(parent_2_genes_innovation_list))
+        # print("Common Genes: {}".format(common_genes))
+        # print("Parent 1 Unique Genes: {}".format(parent_1_unique_genes_innovation_list))
+        # print("Parent 2 Unique Genes: {}".format(parent_2_unique_genes_innovation_list))
+        #
+        # print("\n")
 
         parent_1_genes = self.genes
         parent_2_genes = other.genes
@@ -159,20 +162,32 @@ class Genome(object):
                     break
 
         # Assign unique genes (disjoint and excess)
-        parent_1_unique_genes = [gene for gene in self.genes if gene.innovation_number in parent_1_genes_innovation_list]
-        parent_2_unique_genes = [gene for gene in self.genes if gene.innovation_number in parent_2_genes_innovation_list]
+        parent_1_unique_genes = [gene for gene in self.genes if gene.innovation_number in parent_1_unique_genes_innovation_list]
+        parent_2_unique_genes = [gene for gene in self.genes if gene.innovation_number in parent_2_unique_genes_innovation_list]
 
-        self._assign_unique_genes(parent_1_unique_genes, progeny_neurons, progeny_genes)
-        self._assign_unique_genes(parent_2_unique_genes, progeny_neurons, progeny_genes)
+
+        if parent_1_unique_genes:
+            self._assign_unique_genes(parent_1_unique_genes, progeny_neurons, progeny_genes)
+
+        if parent_2_unique_genes:
+            self._assign_unique_genes(parent_2_unique_genes, progeny_neurons, progeny_genes)
+
         progeny_genome = Genome(progeny_neurons, progeny_genes)
 
         return progeny_genome
 
 
     def _assign_unique_genes(self, parents_unique_genes, progeny_neurons, progeny_genes):
+
         for unique_gene in parents_unique_genes:
-            print(unique_gene)
-            """ FINISH THIS ONCE MUTATIONS ARE IMPLEMENTED AND WE CAN TEST THIS OUT """
+            # print("Unique gene! {}".format(unique_gene.innovation_number))
+            for gene in parents_unique_genes:
+                progeny_genes.append(gene)
+
+        # print("New progeny genes: {}".format(progeny_genes))
+        """ NEED TO ADD NEURON ?? """
+
+
 
 
     def mutate(self):
@@ -203,7 +218,6 @@ class Genome(object):
         mutations = [self.add_connection, self.remove_connection]
         if connection_mutation_chance <= CONNECTION_MUTATION_RATE:
             mutations[np.random.randint(2)]()
-
 
 
         # C. Neuron mutations
@@ -237,15 +251,17 @@ class Genome(object):
                 gene_input_id = gene.input_neuron_id
                 gene_output_id = gene.output_neuron_id
 
+                # Disable old gene
                 if gene_input_id == input_neuron_id and gene_output_id == output_neuron_id:
                     gene.enabled = False
 
             if not connection_found:
                 break
 
+
             # create 2 new connection genes
-            new_gene_1 = Gene(innovation_number=None, input_neuron_id=input_neuron_id, output_neuron_id=new_neuron_id)
-            new_gene_2 = Gene(innovation_number=None, input_neuron_id=new_neuron_id, output_neuron_id=output_neuron_id)
+            new_gene_1 = Gene(innovation_number=self.next_innovation_number(), input_neuron_id=input_neuron_id, output_neuron_id=new_neuron_id, weight=1.0)
+            new_gene_2 = Gene(innovation_number=self.next_innovation_number(), input_neuron_id=new_neuron_id, output_neuron_id=output_neuron_id)
             self.genes.append(new_gene_1)
             self.genes.append(new_gene_2)
             neuron_added = True
@@ -291,10 +307,14 @@ class Genome(object):
 
 
             # Else, create new gene
-            new_gene = Gene(innovation_number=None, input_neuron_id=input_neuron_id, output_neuron_id=output_neuron_id)
+            new_gene = Gene(innovation_number=self.next_innovation_number(), input_neuron_id=input_neuron_id, output_neuron_id=output_neuron_id)
             self.genes.append(new_gene)
             connection_added = True
 
+    def next_innovation_number(self):
+        self.innovation_numbers = [gene.innovation_number for gene in self.genes]
+        new_innovation_number = max(self.innovation_numbers)+1
+        return new_innovation_number
 
     def remove_connection(self):
         """
@@ -314,7 +334,7 @@ class Genome(object):
     def generate_io_ids(self):
         # Determine where neuron will be placed
         input_neuron_id = self.neuron_ids[np.random.randint(len(self.neuron_ids))]
-        print("Random input id: {}".format(input_neuron_id))
+        # print("Random input id: {}".format(input_neuron_id))
 
 
         # Determine output neuron connection
@@ -324,7 +344,7 @@ class Genome(object):
             if input_neuron_id != output_neuron_id:
                 same_id = False
 
-        print("Random output id: {}".format(output_neuron_id))
+        # print("Random output id: {}".format(output_neuron_id))
 
         return input_neuron_id, output_neuron_id
 

@@ -3,25 +3,26 @@
     http://www.onlamp.com/pub/a/python/2004/12/02/tdd_pyunit.html
 """
 from FlapPyBird.flappy import FlappyBirdApp
-from modules.organism import Organism
+
 from modules.species import Species
 from modules.config import *
 
 import numpy as np
-import random
-random.seed()
+np.random.seed()
 
 
 class System(object):
     def __init__(self):
-        self.species = [Species([Organism() for _ in range(ORGANISMS)])]
+        initial_species_ID = 0
+        self.species_list = [Species(initial_species_ID)]
 
     def run(self):
 
         while True:
+
             # Fitness
-            for species in self.species:
-                print("Running species {}".format(species.ID))
+            for species in self.species_list:
+                print("Generating Fitness for Species #{}".format(species.ID))
                 self.fitness(species)
 
             # Selection
@@ -35,14 +36,16 @@ class System(object):
 
 
     def fitness(self, species):
-        print("\tNumber of organisms: {}".format(len(species.organisms)))
+        # Play Game to generate fitness
         flappy = FlappyBirdApp(species.organisms)
         flappy.play()
 
+
+        # Initialize items needed for numpy sorting
         dtype = [('id', int), ('fitness', float)]
         unsorted_fitness_values = []
-
         network_id_map = {}
+
 
         for bird_results in flappy.crash_info:
             # Obtain pertinent info from game
@@ -75,38 +78,75 @@ class System(object):
 
 
     def selection(self):
+        # Fix this section to remove unfit organisms from species: 'cull the species'
         self.top_species = {}
-        for species in self.species:
-            species_ID = species.ID
-            self.top_species[species_ID] = []
+
+        # Iterate through the species within the environment
+        for species in self.species_list:
+
+            # Initialize new key for top species dictionary inidicating current species
+            self.top_species[species.ID] = []
+
+            # Iterate through organisms within the current species
             for organism in species.organisms:
+
+                # Get oragnism's intra species rank
                 rank = organism.intra_species_rank
+
+                # Check if rank is less than the cutoff; if so, append organism to top list within species
                 if rank < RANK_CUTOFF:
-                    self.top_species[species_ID].append(organism)
+                    self.top_species[species.ID].append(organism)
+
+        print("Top Species")
+        print("-----------")
+        for species_ID, organisms in self.top_species.items():
+            print("\tSpecies ID: {}")
+            for organism in organisms:
+                print("\t\tOrganism {} -- Rank: {}".format(organism.ID, organism.intra_species_rank))
+
+            print("\n")
+
 
 
 
     def replication(self):
-        # print("\n")
-        # print("="*40)
-        # print("REPLICATION")
-        # print("=*40")
-        # print("\n")
-        new_generation = []
-        for speciesID, organisms in self.top_species.items():
 
+        # Initialize new generation of species list (must contain Species-class objects)
+        new_species_generation = []
+
+        # Iterate through the species in top_species
+        for species_ID, organisms in self.top_species.items():
+
+            # Initialize new list to hold the progeny of 2 species
             new_organisms_list = []
+
+            # Iterate through organisms by 2 up until the second-to-last organism
             for index, parent_organism_1 in enumerate(organisms[:-1:2]):
+
+                # Define second parent in list
                 parent_organism_2 = organisms[index+1]
 
+                # Since we cut original population in half during selection, 2 parents must create 4 progeny to return to original population size for next generation
                 for progeny_index in range(4):
+
+                    # Mate parent 1 with parent 2 to produce progeny
                     progeny = parent_organism_1.mate(parent_organism_2)
+
+                    # Append progeny to list
                     new_organisms_list.append(progeny)
 
-            new_species = Species(new_organisms_list, speciesID)
-            new_generation.append(new_species)
+            # Create new generation of species from the progeny
+            new_species = Species(species_ID, new_organisms_list)
 
-        self.species = new_generation
+            # Append to new species generation list
+            new_species_generation.append(new_species)
+
+        # Redefine species_list
+        self.species_list = new_species_generation
+
+        print("New species list")
+        for species in self.species_list:
+            print("species: {}".format(type(species)))
 
 
 
@@ -114,48 +154,40 @@ class System(object):
 
 
     def speciation(self):
-        # print("\n")
-        # print("="*40)
-        # print("\tSpeciation")
-        # print("="*40)
-        for species in self.species:
-            # print("{}".format(species))
-            for organism in species.organisms:
-                # print("\t{}".format(organism))
-                species.is_compatible(organism)
+        species_ID_list = []
 
+        for species in self.species_list:
+            species_ID_list.append(species.ID)
+            for organism in species.organisms:
+                species.is_compatible(organism)
 
         # Check for similarities in new species list for grouping into new species
         new_organisms = []
-        for species in self.species:
+        for species in self.species_list:
             for organism in species.organisms:
                 if not organism.species_matched:
                     new_organisms.append(organism)
 
         # Create new species
         if new_organisms:
-            new_species_list = [Species([new_organisms[0]])]
+            new_species_ID = max(species_ID_list)+1
+            new_species_list = [Species(new_species_ID, [new_organisms[0]])]
             del new_organisms[0]
-            self.species.append(new_species_list[0])
+            self.species_list.append(new_species_list[0])
 
         if new_organisms:
+
             for new_organism in new_organisms:
-                # print("\tNew organism: {}".format(new_organism))
                 for new_species in new_species_list:
-                    # print("\t\tChecking if compatible with species: {}".format(new_species))
                     new_species.is_compatible(new_organism)
 
                 if not new_organism.species_matched:
-                    # print("\t\tNot matched. Creating new species")
-                    new_species_list.append(Species([new_organism]))
-                # else:
-                #     print("\t\tMatched!")
-                # print("\n")
-
+                    new_species_ID += 1
+                    new_species_list.append(Species(new_species_ID, [new_organism]))
 
             for new_species in new_species_list[1:]:
-                self.species.append(new_species)
-        
+                self.species_list.append(new_species)
+
 
 
 

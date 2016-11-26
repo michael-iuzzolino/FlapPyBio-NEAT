@@ -1,45 +1,39 @@
+from modules.organism import Organism
 from modules.config import *
+
 import numpy as np
-import random
-random.seed()
+np.random.seed()
 
 class Species(object):
-	ID = 0
+	"""
+		The species contains all of the organisms that are genetically similar. This protects novel structures from immediate extinction.
+		The key elements of the class are:
+			1. List of organisms
+			2. Representative genome against which organisms are compared to determine species membership
+			3. Species ID
+			4. CULLING - removes unfit organisms from the species (this may also include species that evolve towards other speices)
+	"""
 
-	def __init__(self, organisms=[], speciesID=None):
-
-		for organism in organisms:
-			organism.speciesID = Species.ID
-
+	def __init__(self, species_id=None, organisms=[]):
+		if not organisms:
+			organisms = [Organism() for _ in range(ORGANISMS)]
 		self.organisms = organisms
 
-		if speciesID:
-			self.ID = speciesID
-		else:
-			self.ID = Species.ID
-			Species.ID += 1
+		self.ID = species_id
 
-		self.genome = None
-		self._init_representative_genome()
-
-	def __repr__(self):
-		return "Species ID {}".format(self.ID)
-
-
-	def _init_representative_genome(self):
-		self.genome = self.organisms[0].synapse_network
+		self.representative_genome = self.organisms[0].genome # Set to genome of first species, since all species will be the same on init
 
 
 	def is_compatible(self, organism):
 
-		organism_genome = organism.synapse_network
+		organism_genome = organism.genome
 
 		# print("\t\tOrganism Genome: {}".format(organism_genome))
 		# print("\t\tSpecies Genome: {}".format(self.genome))
 
 
 		# Calculate excess genes, E
-		E, D, W, N = organism.compare_genomes(self.genome)
+		E, D, W, N = organism.compare_genomes(self.representative_genome)
 
 
 		# Calculate average weight differences of matching genes
@@ -57,9 +51,5 @@ class Species(object):
 			organism.species_matched = True
 
 
-
-	def add(self, new_organism):
-		pass
-
-	def remove(self, network_ID):
-		pass
+	def __repr__(self):
+		return "Species ID: {}".format(self.ID)

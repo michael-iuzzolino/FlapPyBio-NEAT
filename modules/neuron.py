@@ -12,7 +12,3 @@ class Neuron(object):
 
         self.type = None
         self.layer_level = None
-
-    # def __repr__(self):
-    #     # return "{} Neuron -- Node {}".format(self.layer, self.node_number)
-    #     pass

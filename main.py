@@ -57,8 +57,7 @@ class System(object):
                         del self.species_list[index]
                     else:
                         print("\tOnly Species in environment. Reinitialize.\n")
-                        initial_species_ID = 0
-                        self.species_list = [Species(species_id=initial_species_ID, generation_number=0)]
+                        self.__init__()
                         return True
                     species.cull = False
         return False

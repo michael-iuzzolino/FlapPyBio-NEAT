@@ -17,22 +17,14 @@ class Gene(object):
 
     def __init__(self, innovation_number=None, input_neuron_id=None, output_neuron_id=None, weight=None):
 
-        if innovation_number is None:
-            innovation_number = -99
-
         self.innovation_number = innovation_number
 
         # Need to implement
         self.input_neuron_id = input_neuron_id
         self.output_neuron_id = output_neuron_id
-        
+
         if weight is None:
             weight = np.random.randn()
         self.weight = weight
 
         self.enabled = True
-
-
-    # def __repr__(self):
-    #     # return "Innovation Number: {}".format(self.innovation_number)
-    #     pass

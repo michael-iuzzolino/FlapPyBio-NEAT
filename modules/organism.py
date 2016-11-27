@@ -32,11 +32,11 @@ class Organism(object):
         self.genome = genome
 
         # Additional attributes
-        intra_species_rank = None
+        self.intra_species_rank = None
 
         self.number_progeny = None
 
-        
+
     def learn(self, information):
         # Normalize input
         information = np.asarray(information).reshape(1, -1)
@@ -62,21 +62,13 @@ class Organism(object):
         # Find genes in common
         parent_1_genome = self.genome.copy()
         parent_2_genome = other.genome.copy()
-        #
-        # print("Original genome ID: {}".format(id(self.genome)))
-        # print("Original: {}".format(self.genome))
-        # print("Copy genome ID: {}".format(id(parent_1_genome)))
-        # print("Copy: {}".format(parent_1_genome))
-        # print("\n")
 
         new_genome = parent_1_genome.crossover(parent_2_genome)
 
         # Mutations
         new_genome.mutate()
 
-
-        progeny = Organism(genome=new_genome)
-        return progeny
+        return Organism(genome=new_genome)
 
 
     def compare_genomes(self, other):
@@ -96,10 +88,7 @@ class Organism(object):
 
 
         # Calculate excess genes - number of genes outside of smallest domain
-        for gene in organism_gene_list:
-            if gene < lower_bound or gene > upper_bound:
-                number_excess_genes += 1
-
+        excess_gene_test_list = organism_gene_list + species_gene_list
         for gene in species_gene_list:
             if gene < lower_bound or gene > upper_bound:
                 number_excess_genes += 1
@@ -119,8 +108,3 @@ class Organism(object):
         N = max(len(organism_gene_list), len(species_gene_list))
 
         return number_excess_genes, number_disjoint_genes, W, N
-
-
-    # def __repr__(self):
-    #     # return "{}".format(self.genome)
-    #     pass

@@ -54,7 +54,6 @@ class Genome(object):
 
 
     def prime_inputs(self, information):
-
         for neuron_id, neuron in self.neurons.items():
             if neuron_id < INPUTS:
                 neuron.output = information[0][neuron_id]
@@ -62,13 +61,9 @@ class Genome(object):
                 return
 
 
-
-
-
     def activate(self):
 
         # Hidden Layers
-
         for neuron_id, neuron in self.neurons.items():
             if neuron_id < INPUTS + OUTPUTS:
                 continue
@@ -79,9 +74,8 @@ class Genome(object):
                 input_neuron = self.neurons[gene.input_neuron_id]
                 neuron.input += gene.weight * input_neuron.output
 
-            # neuron.output = 1.0 / (1.0 + np.exp(-1.0 * neuron.input))
             neuron.output = 2.0 / (1.0 + np.exp(-4.9 * neuron.input)) - 1.0
-            
+
             # Reset neuron.input to 0?
             neuron.input = 0.0
 
@@ -95,7 +89,6 @@ class Genome(object):
             output_neuron.input += gene.weight * input_neuron.output
 
         output_neuron.output = 1.0 / (1.0 + np.exp(-1.0 * output_neuron.input))
-
         output_neuron.input = 0.0
 
 
@@ -116,13 +109,6 @@ class Genome(object):
         parent_1_unique_genes_innovation_list = parent_1_genes_innovation_list - parent_2_genes_innovation_list
         parent_2_unique_genes_innovation_list = parent_2_genes_innovation_list - parent_1_genes_innovation_list
 
-        # print("Parent 1 Genes: {}".format(parent_1_genes_innovation_list))
-        # print("Parent 2 Genes: {}".format(parent_2_genes_innovation_list))
-        # print("Common Genes: {}".format(common_genes))
-        # print("Parent 1 Unique Genes: {}".format(parent_1_unique_genes_innovation_list))
-        # print("Parent 2 Unique Genes: {}".format(parent_2_unique_genes_innovation_list))
-        #
-        # print("\n")
 
         parent_1_genes = self.genes
         parent_2_genes = other.genes
@@ -334,8 +320,6 @@ class Genome(object):
     def generate_io_ids(self):
         # Determine where neuron will be placed
         input_neuron_id = self.neuron_ids[np.random.randint(len(self.neuron_ids))]
-        # print("Random input id: {}".format(input_neuron_id))
-
 
         # Determine output neuron connection
         same_id = True
@@ -343,8 +327,6 @@ class Genome(object):
             output_neuron_id = self.neuron_ids[np.random.randint(len(self.neuron_ids))]
             if input_neuron_id != output_neuron_id:
                 same_id = False
-
-        # print("Random output id: {}".format(output_neuron_id))
 
         return input_neuron_id, output_neuron_id
 
@@ -356,22 +338,14 @@ class Genome(object):
 
         # Ensure input neuron isn't the network's output neuron; if so, swap the input and output
         if self.neurons[input_neuron_id].type == 'output':
-            temp = input_neuron_id
-            input_neuron_id = output_neuron_id
-            output_neuron_id = input_neuron_id
+            input_neuron_id, output_neuron_id = output_neuron_id, input_neuron_id   # swap
+
 
         # Ensure hidden layer connections have correct order
         if self.neurons[input_neuron_id].type == 'hidden':
             if self.neurons[input_neuron_id].layer_level > self.neurons[output_neuron_id].layer_level:
-                temp = input_neuron_id
-                input_neuron_id = output_neuron_id
-                output_neuron_id = input_neuron_id
+                input_neuron_id, output_neuron_id = output_neuron_id, input_neuron_id   # swap
             elif self.neurons[input_neuron_id].layer_level == self.neurons[output_neuron_id].layer_level:
                 return True
 
         return False
-
-
-    # def __repr__(self):
-    #     # return "{}".format(self.genes)
-    #     pass

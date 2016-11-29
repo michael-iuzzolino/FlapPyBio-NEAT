@@ -77,8 +77,6 @@ class System(object):
             organism = organism_id_mapping[organism_id]
             organism.intra_species_rank = rank
             organism.normalized_fitness = organism.fitness / len(sorted_species_fitness)  # Normalize fitness
-            # print("Organism ID: {}".format(organism_id))
-            # print("\tOrganism: {} -- Rank {} -- Fitness {} -- Normalized Fitness {}\n".format(organism, organism.intra_species_rank, organism.fitness, organism.normalized_fitness))
 
         # Generate species' generation fitness
         species.generations_total_fitness()
@@ -156,6 +154,7 @@ class System(object):
             *** ISSUE: Need to track all new innovations in each species to ensure no double incrementing of
             innovation numbers for same structure. ***
         """
+
         new_organisms = []
         for species in self.population:
             # Get number of progeny for species

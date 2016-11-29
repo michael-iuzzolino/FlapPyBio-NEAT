@@ -52,7 +52,6 @@ class Organism(object):
 
 
     def mate(self, other):
-
         parent_1_genome = self.genome.copy()
         parent_2_genome = other.genome.copy()
 

@@ -139,69 +139,85 @@ class Genome(object):
 
 
     def crossover(self, other):
-        # Check for common and parent-unique genes
-        parent_1_genes_innovation_list = set([gene.innovation_number for gene in self.genes])
-        parent_2_genes_innovation_list = set([gene.innovation_number for gene in other.genes])
-        common_genes = parent_1_genes_innovation_list & parent_2_genes_innovation_list
-        parent_1_unique_genes_innovation_list = parent_1_genes_innovation_list - parent_2_genes_innovation_list
-        parent_2_unique_genes_innovation_list = parent_2_genes_innovation_list - parent_1_genes_innovation_list
+        """
+            Crossover:
+            Common genes: 50% chance of inheriting from one parent or the other
+            Disjoint / excess genes: 50% chance of inheriting from parent
 
+            1) Create new connection genome from parents
+            2) From new connection genome, create new neurons dictionary
+            3) Create new connection matrix from connection genome
+
+            4) Create new genome
+            5) return it to calling function
+        """
+
+        print("\n\tCrossover")
+        print("\t---------")
+
+        # 1. Create new connection genome from parents
+        progeny_genes = []
 
         parent_1_genes = self.genes
         parent_2_genes = other.genes
-        progeny_neurons = {}
-        progeny_genes = []
 
+        for parent_1_gene in parent_1_genes:
+            gene_1_innovation = parent_1_gene.innovation_number
 
-        # Assign genes in common
-        for gene_1 in parent_1_genes:
-            gene_1_innovation_number = gene_1.innovation_number
-            for gene_2 in parent_2_genes:
-                gene_2_innovation_number = gene_2.innovation_number
-                if gene_1_innovation_number == gene_2_innovation_number:
+            gene_1_matched = False
+            for gene_2_index, parent_2_gene in enumerate(parent_2_genes):
+                gene_2_innovation = parent_2_gene.innovation_number
 
-                    # decide which parent contributes to child genes
-                    parents = [[self, gene_1], [other, gene_2]]
+                if gene_1_innovation == gene_2_innovation:
+
+                    gene_1_matched = True
+                    parent_genes = [parent_1_gene, parent_2_gene]
                     random_parent_index = np.random.randint(2)
-                    parent = parents[random_parent_index][0]
-                    parent_gene = parents[random_parent_index][1]
+                    new_gene = parent_genes[random_parent_index].copy()
 
-                    # Define input and output neuron id's
-                    input_neuron_id = parent_gene.input_neuron_id
-                    output_neuron_id = parent_gene.output_neuron_id
+                    progeny_genes.append(new_gene)
+                    del parent_2_genes[gene_2_index]
 
-                    # Define input and output neurons associated with parent's gene
-                    input_neuron = parent.neurons[input_neuron_id]
-                    output_neuron = parent.neurons[output_neuron_id]
+            if not gene_1_matched:
+                new_gene = parent_1_gene.copy()
+                progeny_genes.append(new_gene)
 
 
-                    # Update progeny genes list with parent gene
-                    progeny_genes.append(parent_gene)
-
-                    # Update progeny_neuron dictionary
-                    progeny_neurons[input_neuron_id] = input_neuron
-                    progeny_neurons[output_neuron_id] = output_neuron
-
-                    break
-
-        # Assign unique genes (disjoint and excess)
-        parent_1_unique_genes = [gene for gene in self.genes if gene.innovation_number in parent_1_unique_genes_innovation_list]
-        parent_2_unique_genes = [gene for gene in self.genes if gene.innovation_number in parent_2_unique_genes_innovation_list]
 
 
-        if parent_1_unique_genes:
-            self.__assign_unique_genes(parent_1_unique_genes, progeny_neurons, progeny_genes)
+        # Catch genes in parent 2 not caught above
+        if not parent_2_genes:
+            for gene in parent_2_genes:
+                new_gene = gene.copy()
+                progeny_genes.append(new_gene)
 
-        if parent_2_unique_genes:
-            self.__assign_unique_genes(parent_2_unique_genes, progeny_neurons, progeny_genes)
 
-        print("\n\n\t\tPROGENY NEURONS: {}".format(progeny_neurons))
-        print("\t\tPROGENY GENES: {}\n\n".format(progeny_genes))
-        progeny_connection_matrix = self.__generate_connection_matrix(progeny_neurons, progeny_genes)
+        # 2. Create new neuron dictionary from new connection genes
+        parent_1_neurons = set([neuron_ID for neuron_ID in self.neurons.keys()])
+        parent_2_neurons = set([neuron_ID for neuron_ID in other.neurons.keys()])
+        neuron_ids = list(parent_1_neurons | parent_2_neurons)
 
-        progeny_genome = Genome(progeny_neurons, progeny_genes, progeny_connection_matrix)
+        progeny_neurons = { neuron_id : Neuron(neuron_id=neuron_id) for neuron_id in neuron_ids}
 
-        return progeny_genome
+
+        # 3. Create new connection matrix from new connection genes
+        progeny_connection_matrix = np.zeros((len(progeny_neurons), len(progeny_neurons)))
+        print("\tProgeny neurons: {}".format(progeny_neurons))
+        print("\tProgeny genes: {}".format(progeny_genes))
+        print("\tConnection matrix")
+        print("{}".format(progeny_connection_matrix))
+        print("\n")
+        for gene in progeny_genes:
+            input_id = gene.input_neuron_id
+            output_id = gene.output_neuron_id
+            progeny_connection_matrix[input_id, output_id] = 1
+        print("\n")
+
+        # 4. Create new genome
+        new_genome = Genome(progeny_neurons, progeny_genes, progeny_connection_matrix)
+        # 5. Return
+        return new_genome
+
 
 
     def __assign_unique_genes(self, parents_unique_genes, progeny_neurons, progeny_genes):
@@ -351,7 +367,7 @@ class Genome(object):
         new_neuron_id = self.__next_neuron_id()
         new_neuron = Neuron(neuron_id=new_neuron_id)
         self.neurons[new_neuron_id] = new_neuron
-
+    
         # Update connection_matrix for new matrix
         new_connection_matrix = np.zeros((len(self.neurons), len(self.neurons)))
         for row_index, row in enumerate(self.connection_matrix):

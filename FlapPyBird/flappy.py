@@ -12,7 +12,7 @@ from FlapPyBird.modules.base import Base
 
 class FlappyBirdApp(object):
 
-    def __init__(self, neural_networks):
+    def __init__(self, species):
         global SCREEN, FPSCLOCK
 
         pygame.init()
@@ -25,6 +25,11 @@ class FlappyBirdApp(object):
 
         """  CREATE PLAYER """
         self.movementInfo = tools.load_and_initialize()
+
+        neural_networks = species.current_generation()
+        self.species_ID = species.ID
+        self.generation_number = species.current_generation_index
+        self.generation_size = len(neural_networks)
         self.birds = [Bird(self.movementInfo, neural_network) for neural_network in neural_networks]
 
         """ CREATE PIPES """
@@ -142,11 +147,13 @@ class FlappyBirdApp(object):
         # =========----==========================================================
         disp_tools.displayStat(SCREEN, self.birds[0].distance*-1, text="distance")
         disp_tools.displayStat(SCREEN, self.score, text="scores")
+        disp_tools.displayStat(SCREEN, self.species_ID, text="species")
+        disp_tools.displayStat(SCREEN, self.generation_number, text="generation")
+        disp_tools.displayStat(SCREEN, self.generation_size, text="generation_size")
         for bird in self.birds:
             # disp_tools.displayStat(SCREEN, bird.energy_used, text="energy")
             # disp_tools.displayStat(SCREEN, neural_network.topology, text="topology")
-            # disp_tools.displayStat(SCREEN, neural_network.species_number, text="species")
-            # disp_tools.displayStat(SCREEN, neural_network.generation_number, text="generation")
+
             SCREEN.blit(IMAGES['player'][bird.index], (bird.x, bird.y))
         # =========----==========================================================
 

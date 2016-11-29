@@ -11,4 +11,14 @@ class Neuron(object):
         self.output = 0.0
 
         self.type = None
-        self.layer_level = None
+        self.layer_level = 0.0
+
+    def activate(self):
+        self.output = 2.0 / (1.0 + np.exp(-4.9 * self.input)) - 1.0
+        self.__inactivate()
+
+    def __inactivate(self):
+        self.input = 0.0
+
+    def __repr__(self):
+        return "{}".format(self.ID)

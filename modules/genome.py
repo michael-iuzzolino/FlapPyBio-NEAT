@@ -20,7 +20,7 @@ class Genome(object):
 
     """
 
-    def __init__(self, neurons={}, genes=[]):
+    def __init__(self, neurons={}, genes=[], connection_matrix=[]):
 
         # Create list of genes
         if not genes:
@@ -28,40 +28,79 @@ class Genome(object):
             neurons = {neuron_id : Neuron(neuron_id) for neuron_id in range(INPUTS+OUTPUTS)}
 
             for neuron_id, neuron in neurons.items():
-                if neuron_id < INPUTS:
-                    neuron.type = 'input'
-                else:
-                    neuron.type = 'output'
-
+                neuron.type = 'input' if neuron_id < INPUTS else 'output'
 
             genes = [Gene(innovation_number=index,
                           input_neuron_id=index,
                           output_neuron_id=INPUTS) for index in range(INPUTS)]
 
+            # Create connection matrix
+            connection_matrix = np.zeros((INPUTS+OUTPUTS, INPUTS+OUTPUTS))
+            # Set all connections from inputs to the output as 1
+            connection_matrix[:INPUTS, INPUTS:] = 1
+
+
+
         self.neurons = neurons
         self.genes = genes
+        self.connection_matrix = connection_matrix
 
 
-        # Useful for mutations later on
-        self.neuron_ids = [neuron_id for neuron_id in self.neurons.keys()]
-        self.innovation_numbers = None
-        self._generate_ave_gene_weight()
 
-    def _generate_ave_gene_weight(self):
+        self.__generate_ave_gene_weight()
+
+    def __repr__(self):
+        return "{}".format(self.__innovation_numbers())
+
+    def __neuron_ids(self):
+        return [neuron_id for neuron_id in self.neurons.keys()]
+
+    def __next_neuron_id(self):
+        neuron_ids = self.__neuron_ids()
+        new_neuron_id = max(neuron_ids)+1
+        return new_neuron_id
+
+    def __innovation_numbers(self):
+        return [gene.innovation_number for gene in self.genes]
+
+    def __next_innovation_number(self):
+        innovation_numbers = self.__innovation_numbers()
+        new_innovation_number = max(innovation_numbers)+1
+        return new_innovation_number
+
+    def __generate_connection_matrix(self, progeny_neurons, progeny_genes):
+        new_connection_matrix = np.zeros((len(progeny_neurons), len(progeny_neurons)))
+        for gene in progeny_genes:
+            input_index = gene.input_neuron_id
+            output_index = gene.output_neuron_id
+            print("input index: {}\toutput index: {}\n".format(input_index, output_index))
+            new_connection_matrix[input_index][output_index] = 1
+        print("\n")
+
+        return new_connection_matrix
+
+
+
+    def __generate_ave_gene_weight(self):
+        """
+            Generate Average Gene Weight Across Genome
+        """
         self.ave_gene_weight = 0.0
         for gene in self.genes:
             self.ave_gene_weight += (gene.weight / len(self.genes))
 
 
-    def prime_inputs(self, information):
+    def activate(self, information):
+        """
+            Activate
+        """
+        # Input layer
         for neuron_id, neuron in self.neurons.items():
-            if neuron_id < INPUTS:
-                neuron.output = information[0][neuron_id]
-            else:
-                return
+            if neuron_id >= INPUTS:
+                break
 
+            neuron.output = information[0][neuron_id]
 
-    def activate(self):
 
         # Hidden Layers
         for neuron_id, neuron in self.neurons.items():
@@ -74,13 +113,11 @@ class Genome(object):
                 input_neuron = self.neurons[gene.input_neuron_id]
                 neuron.input += gene.weight * input_neuron.output
 
-            neuron.output = 2.0 / (1.0 + np.exp(-4.9 * neuron.input)) - 1.0
+            neuron.activate()
 
-            # Reset neuron.input to 0?
-            neuron.input = 0.0
 
         # Output Layer
-        output_neuron_id = INPUTS                       # Output neuron is at INPUT index
+        output_neuron_id = INPUTS                                               # Output neuron is at INPUT index
         output_neuron = self.neurons[output_neuron_id]
         for gene in self.genes:
             if output_neuron_id != gene.output_neuron_id or not gene.enabled:
@@ -88,16 +125,16 @@ class Genome(object):
             input_neuron = self.neurons[gene.input_neuron_id]
             output_neuron.input += gene.weight * input_neuron.output
 
-        output_neuron.output = 1.0 / (1.0 + np.exp(-1.0 * output_neuron.input))
-        output_neuron.input = 0.0
+        output_neuron.activate()
 
 
 
     def copy(self):
         new_neurons = copy.deepcopy(self.neurons)
         new_genes = copy.deepcopy(self.genes)
+        new_connection_matrix = copy.deepcopy(self.connection_matrix)
 
-        new_genome = Genome(new_neurons, new_genes)
+        new_genome = Genome(new_neurons, new_genes, new_connection_matrix)
         return new_genome
 
 
@@ -153,27 +190,29 @@ class Genome(object):
 
 
         if parent_1_unique_genes:
-            self._assign_unique_genes(parent_1_unique_genes, progeny_neurons, progeny_genes)
+            self.__assign_unique_genes(parent_1_unique_genes, progeny_neurons, progeny_genes)
 
         if parent_2_unique_genes:
-            self._assign_unique_genes(parent_2_unique_genes, progeny_neurons, progeny_genes)
+            self.__assign_unique_genes(parent_2_unique_genes, progeny_neurons, progeny_genes)
 
-        progeny_genome = Genome(progeny_neurons, progeny_genes)
+        print("\n\n\t\tPROGENY NEURONS: {}".format(progeny_neurons))
+        print("\t\tPROGENY GENES: {}\n\n".format(progeny_genes))
+        progeny_connection_matrix = self.__generate_connection_matrix(progeny_neurons, progeny_genes)
+
+        progeny_genome = Genome(progeny_neurons, progeny_genes, progeny_connection_matrix)
 
         return progeny_genome
 
 
-    def _assign_unique_genes(self, parents_unique_genes, progeny_neurons, progeny_genes):
+    def __assign_unique_genes(self, parents_unique_genes, progeny_neurons, progeny_genes):
 
         for unique_gene in parents_unique_genes:
-            # print("Unique gene! {}".format(unique_gene.innovation_number))
             for gene in parents_unique_genes:
                 progeny_genes.append(gene)
 
-        # print("New progeny genes: {}".format(progeny_genes))
-        """ NEED TO ADD NEURON ?? """
 
-
+    def __mutation_chance(self):
+        return np.random.uniform()
 
 
     def mutate(self):
@@ -190,70 +229,46 @@ class Genome(object):
                         -- WE WON'T IMPLEMENT THIS RIGHT NOW since we are building up complexity rather than reducing it.
         """
 
-        # A. Weight mutations
-        for gene in self.genes:
-            weight_mutation_chance = np.random.uniform()
-            if weight_mutation_chance >= WEIGHT_MUTATION_RATE:
-                continue
-            weight_change = np.random.randn()
-            gene.weight += weight_change
 
 
-        # B. Connection mutations
-        connection_mutation_chance = np.random.uniform()
-        mutations = [self.add_connection, self.remove_connection]
+        connection_weight_mutation_chance = self.__mutation_chance()
+        if connection_weight_mutation_chance > CONNECTION_WEIGHT_MUTATION_RATE:
+            self.__mutate_weights()                                                 # Weight mutations
+
+        connection_mutation_chance = self.__mutation_chance()
         if connection_mutation_chance <= CONNECTION_MUTATION_RATE:
-            mutations[np.random.randint(2)]()
+            self.__mutate_connections()                                             # Connection mutations
 
-
-        # C. Neuron mutations
-        neuron_mutation_chance = np.random.uniform()
+        neuron_mutation_chance = self.__mutation_chance()
         if neuron_mutation_chance <= NEURON_MUTATION_RATE:
-            self.add_neuron()
+            self.__mutate_nodes()                                                   # Node mutations
 
 
 
-    def add_neuron(self):
-        new_neuron_id = max(self.neuron_ids)+1
+    def __mutate_weights(self):
 
-        neuron_added = False
-        while not neuron_added:
+        # Check every gene for chance of weight mutation
+        for gene in self.genes:
 
-            input_neuron_id, output_neuron_id = self.generate_io_ids()
+            weight_mutation_chance = self.__mutation_chance()
+            uniform_mutation = False
 
-            if self.connection_issues(input_neuron_id, output_neuron_id):
-                continue
+            # Check for uniform mutation
+            if weight_mutation_chance <= WEIGHT_MUTATION_RATE:
+                weight_change = self.__mutation_chance()
+                direction_change = -1.0 if np.random.randint(2) == 0 else +1.0
+                gene.weight += direction_change * weight_change
+                uniform_mutation = True
 
-            # create new neuron
-            new_neuron = Neuron(neuron_id=None)
-            new_neuron.type = 'hidden'
-            """ FIGURE OUT HOW TO DETERMINE ITS LAYER NUMBER! """
-            new_neuron.layer_level = 0
-            self.neurons[new_neuron_id] = new_neuron
-
-            # remove previous connection gene
-            connection_found = False
-            for gene in self.genes:
-                gene_input_id = gene.input_neuron_id
-                gene_output_id = gene.output_neuron_id
-
-                # Disable old gene
-                if gene_input_id == input_neuron_id and gene_output_id == output_neuron_id:
-                    gene.enabled = False
-
-            if not connection_found:
-                break
+            # Check for completely new random weight mutation
+            if not uniform_mutation:
+                chance_new_weight = self.__mutation_chance()
+                if chance_new_weight <= NEW_WEIGHT_MUTATION_RATE:
+                    gene.weight = np.random.randn()
 
 
-            # create 2 new connection genes
-            new_gene_1 = Gene(innovation_number=self.next_innovation_number(), input_neuron_id=input_neuron_id, output_neuron_id=new_neuron_id, weight=1.0)
-            new_gene_2 = Gene(innovation_number=self.next_innovation_number(), input_neuron_id=new_neuron_id, output_neuron_id=output_neuron_id)
-            self.genes.append(new_gene_1)
-            self.genes.append(new_gene_2)
-            neuron_added = True
 
-
-    def add_connection(self):
+    def __mutate_connections(self):
         """
             Adds a connection via
             1. Re-enabling a disabled gene or
@@ -267,85 +282,145 @@ class Genome(object):
                     the output_layer neuron.
         """
 
-        connection_added = False
-        while not connection_added:
-            input_neuron_id, output_neuron_id = self.generate_io_ids()
-            if self.connection_issues(input_neuron_id, output_neuron_id):
+        """
+            Mutating a connection means
+                1. Adding a new link between previously unlinked nodes (e.g., valid cells in connection_matrix = 0 can be set to 1)
+        """
+        print("\tMutation: Connection")
+        print("\t--------------------")
+        print("\n")
+
+        valid_connections = []
+        for row_index, row in enumerate(self.connection_matrix):
+
+            # Skip row corresponding to output neuron - this can never be an input to a connection node (no back propagation)
+            if row_index == INPUTS:
                 continue
 
+            for col_index, value in enumerate(row):
+                if value == 1:
+                    continue
 
-            # Checks to see if connetion already exists
-            connection_exists_and_enabled = False
-            for gene in self.genes:
-                gene_input_id = gene.input_neuron_id
-                gene_output_id = gene.output_neuron_id
-                if gene_input_id == input_neuron_id and gene_output_id == output_neuron_id:
-                    # check to see if it is already enabled:
-                    if gene.enabled:
-                        connection_exists_and_enabled = True
-                    # If it's not enabled, enable it
-                    elif not gene.enabled:
-                        gene.enabled = True
-                        connection_added = True
-                        break
-            if connection_exists_and_enabled:
-                break
+                if (col_index >= INPUTS) and (row_index != col_index):
+                    valid_connections.append((row_index, col_index))
+
+        if not valid_connections:
+            print("\t\tNo new connections to make.")
+            return
 
 
-            # Else, create new gene
-            new_gene = Gene(innovation_number=self.next_innovation_number(), input_neuron_id=input_neuron_id, output_neuron_id=output_neuron_id)
-            self.genes.append(new_gene)
-            connection_added = True
+        random_connection_index = np.random.randint(len(valid_connections))
+        random_connection = valid_connections[random_connection_index]
 
-    def next_innovation_number(self):
-        self.innovation_numbers = [gene.innovation_number for gene in self.genes]
-        new_innovation_number = max(self.innovation_numbers)+1
-        return new_innovation_number
+        # Create new connection gene
+        input_id = random_connection[0]
+        output_id = random_connection[1]
 
-    def remove_connection(self):
-        """
-            Removes a connection: i.e., enable = False for one of the genes, then returns
-        """
-        disabled_gene = False
+        # First, check if connection node exists but was disabled; if so, re-enable
+        for gene in self.genes:
+            gene_input_id = gene.input_neuron_id
+            gene_output_id = gene.output_neuron_id
+            if input_id == gene_input_id and output_id == gene_output_id:
+                if gene.enabled == False:
+                    print("\t\tRe-enabling Connection")
+                    gene.enabled = True
+                    self.connection_matrix[gene_input_id][gene_output_id] = 1
+                    return
 
-        while not disabled_gene:
-            for gene in self.genes:
-                disable_connection_chance = np.random.uniform()
-                if disable_connection_chance <= (1 / len(self.genes)):
-                    gene.enable = False
-                    disabled_gene = True
-                    break
+        print("\t\tCreating new connection between nodes {} and {}".format(input_id, output_id))
 
+        # Generate innovation number!
+        innovation_number = self.__next_innovation_number()
+        new_gene = Gene(innovation_number=innovation_number,
+                        input_neuron_id=input_id,
+                        output_neuron_id=output_id,
+                        weight=None)
+        self.genes.append(new_gene)
 
-    def generate_io_ids(self):
-        # Determine where neuron will be placed
-        input_neuron_id = self.neuron_ids[np.random.randint(len(self.neuron_ids))]
-
-        # Determine output neuron connection
-        same_id = True
-        while same_id:
-            output_neuron_id = self.neuron_ids[np.random.randint(len(self.neuron_ids))]
-            if input_neuron_id != output_neuron_id:
-                same_id = False
-
-        return input_neuron_id, output_neuron_id
-
-    def connection_issues(self, input_neuron_id, output_neuron_id):
-        # Ensure proper order of input and output: swap if necessary or continue if bad selection
-        if self.neurons[input_neuron_id].type == 'input':
-            if self.neurons[output_neuron_id].type == 'input':
-                return True
-
-        # Ensure input neuron isn't the network's output neuron; if so, swap the input and output
-        if self.neurons[input_neuron_id].type == 'output':
-            input_neuron_id, output_neuron_id = output_neuron_id, input_neuron_id   # swap
+        # Update connection_matrix
+        self.connection_matrix[input_id][output_id] = 1
 
 
-        # Ensure hidden layer connections have correct order
-        if self.neurons[input_neuron_id].type == 'hidden':
-            if self.neurons[input_neuron_id].layer_level > self.neurons[output_neuron_id].layer_level:
-                input_neuron_id, output_neuron_id = output_neuron_id, input_neuron_id   # swap
-            elif self.neurons[input_neuron_id].layer_level == self.neurons[output_neuron_id].layer_level:
-                return True
 
-        return False
+    def __mutate_nodes(self):
+        print("\tMutation: Node")
+        print("\t--------------")
+        print("\n")
+
+        # Create new neuron
+        new_neuron_id = self.__next_neuron_id()
+        new_neuron = Neuron(neuron_id=new_neuron_id)
+        self.neurons[new_neuron_id] = new_neuron
+
+        # Update connection_matrix for new matrix
+        new_connection_matrix = np.zeros((len(self.neurons), len(self.neurons)))
+        for row_index, row in enumerate(self.connection_matrix):
+            for col_index, value in enumerate(row):
+                new_connection_matrix[row_index][col_index] = value
+
+        self.connection_matrix = new_connection_matrix
+
+        # Search connection matrix for value positions
+        valid_connections = []
+        for row_index, row in enumerate(self.connection_matrix):
+
+            # Skip row corresponding to output neuron - this can never be an input to a connection node (no back propagation)
+            if row_index == INPUTS:
+                continue
+
+            for col_index, value in enumerate(row):
+                if value == 0:
+                    # We are interested in values == 1, not == 0
+                    continue
+
+                if (col_index >= INPUTS) and (row_index != col_index):
+                    valid_connections.append((row_index, col_index))
+
+
+
+        random_connection_index = np.random.randint(len(valid_connections))
+        random_connection = valid_connections[random_connection_index]
+
+        # Set I/O ids
+        input_id = random_connection[0]
+        output_id = random_connection[1]
+
+
+
+        # Deactivate old connection in connection genome
+        for gene in self.genes:
+            gene_input_id = gene.input_neuron_id
+            gene_output_id = gene.output_neuron_id
+            if input_id == gene_input_id and output_id == gene_output_id:
+                previous_weight = gene.weight
+                gene.enabled = False
+
+        # Update connection_matrix to reflect disable
+        self.connection_matrix[input_id][output_id] = 0
+
+
+
+
+        # Create 2 new connection genes
+        # Gene 1
+
+        print("\t\tCreating new connection between nodes {} and {}".format(input_id, new_neuron_id))
+
+        # Generate innovation number!
+        innovation_number = self.__next_innovation_number()
+        new_gene_1 = Gene(innovation_number=innovation_number,
+                        input_neuron_id=input_id,
+                        output_neuron_id=new_neuron_id,
+                        weight=1.0)
+        self.genes.append(new_gene_1)
+
+        # Gene 2
+        print("\t\tCreating new connection between nodes {} and {}".format(new_neuron_id, output_id))
+
+        # Generate innovation number!
+        innovation_number = self.__next_innovation_number()
+        new_gene_2 = Gene(innovation_number=innovation_number,
+                        input_neuron_id=new_neuron_id,
+                        output_neuron_id=output_id,
+                        weight=previous_weight)
+        self.genes.append(new_gene_2)

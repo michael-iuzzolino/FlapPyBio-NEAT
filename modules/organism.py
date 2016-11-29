@@ -17,41 +17,35 @@ class Organism(object):
                     then fed forward through the graph to generate an output
             4. DECISION: Output decision (flap or not flap) sent to FlapPyBird here
     """
-    ID = 0
+    ID = id(0)
 
     def __init__(self, genome=None, organism_id=None):
         if not organism_id:
             organism_id = Organism.ID
-            Organism.ID += 1
+            Organism.ID += id(1)
         self.ID = organism_id
 
-        # Genome
         if not genome:
             genome = Genome()
-
         self.genome = genome
 
-        # Additional attributes
         self.intra_species_rank = None
-
+        self.fitness = 0.0
+        self.normalized_fitness = 0.0
         self.number_progeny = None
 
 
+
     def learn(self, information):
-        # Normalize input
-        information = np.asarray(information).reshape(1, -1)
+
+        information = np.asarray(information).reshape(1, -1)                    # Normalize input
         information = preprocessing.normalize(information, norm='l2')
 
-        # Prime input layer
-        self.genome.prime_inputs(information)
-
-        # Feed forward to generate output
-        self.genome.activate()
+        self.genome.activate(information)                                                  # Feed forward to generate output
 
 
     def decision(self):
-        # Obtain output from output layer
-        raw_output = self.genome.neurons[INPUTS].output
+        raw_output = self.genome.neurons[INPUTS].output                         # Obtain output from output layer
         output = 1 if raw_output >= 0.5 else 0
 
         return output
@@ -59,7 +53,6 @@ class Organism(object):
 
     def mate(self, other):
 
-        # Find genes in common
         parent_1_genome = self.genome.copy()
         parent_2_genome = other.genome.copy()
 
@@ -68,6 +61,12 @@ class Organism(object):
         # Mutations
         new_genome.mutate()
 
+        return Organism(genome=new_genome)
+
+
+    def mitosis(self):
+        new_genome = self.genome.copy()
+        new_genome.mutate()
         return Organism(genome=new_genome)
 
 
@@ -83,28 +82,21 @@ class Organism(object):
         organism_min, organism_max = min(organism_gene_list), max(organism_gene_list)
         species_min, species_max = min(species_gene_list), max(species_gene_list)
 
-        lower_bound = max(organism_min, species_min)    # lower bound of genome with largest innovation number
-        upper_bound = min(organism_max, species_max)    # upper bound of genome with smallest innovation number
+        lower_bound = max(organism_min, species_min)                            # lower bound of genome with largest innovation number
+        upper_bound = min(organism_max, species_max)                            # upper bound of genome with smallest innovation number
 
-
-        # Calculate excess genes - number of genes outside of smallest domain
-        excess_gene_test_list = organism_gene_list + species_gene_list
+        excess_gene_test_list = organism_gene_list + species_gene_list          # Calculate excess genes - number of genes outside of smallest domain
         for gene in species_gene_list:
             if gene < lower_bound or gene > upper_bound:
                 number_excess_genes += 1
 
-
-        # Calculate disjoint genes - number of genes in the gaps
-        for gene in range(lower_bound, upper_bound+1):
+        for gene in range(lower_bound, upper_bound+1):                          # Calculate disjoint genes - number of genes in the gaps
             if (gene in organism_gene_list) and (gene not in species_gene_list):
                 number_disjoint_genes += 1
             if (gene in species_gene_list) and (gene not in organism_gene_list):
                 number_disjoint_genes += 1
 
-        # Calculate difference of average gene weights of genomes
-        W = self.genome.ave_gene_weight - other.ave_gene_weight
-
-        # Calculate max length genome
-        N = max(len(organism_gene_list), len(species_gene_list))
+        W = self.genome.ave_gene_weight - other.ave_gene_weight                 # Calculate difference of average gene weights of genomes
+        N = max(len(organism_gene_list), len(species_gene_list))                # Calculate max length genome
 
         return number_excess_genes, number_disjoint_genes, W, N

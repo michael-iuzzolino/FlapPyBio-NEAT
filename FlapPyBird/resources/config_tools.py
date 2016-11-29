@@ -7,7 +7,7 @@ def load_images():
     IMAGES['numbers'] = tuple([pygame.image.load('FlapPyBird/assets/sprites/{}.png'.format(x)).convert_alpha() for x in range(10)])
 
     sprite_load_list = ["gameover", "message", "base", "energy", "distance",
-                        "organism", "generation", "scores", "species", "topology"]
+                        "organisms", "generation", "scores", "species", "topology"]
 
     for sprite in sprite_load_list:
         IMAGES[sprite] = pygame.image.load('FlapPyBird/assets/sprites/{}.png'.format(sprite)).convert_alpha()
@@ -42,7 +42,7 @@ def initialize_random_sprites():
         pygame.image.load(PIPES_LIST[pipeindex]).convert_alpha(),
     )
 
-    
+
 
 
 def initialize_hitmasks():

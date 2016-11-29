@@ -12,255 +12,231 @@ np.random.seed()
 
 
 class System(object):
+    """
+        SYSTEM
+        ------
+    """
+
     def __init__(self):
-        initial_species_ID = 0
-        self.species_list = [Species(species_id=initial_species_ID, generation_number=0)]
+
+        first_species = Species()
+        self.population = [first_species]
+        self.population_fitness = 0.0
+
 
     def run(self):
+        """
+            Run
+            ---
+        """
 
         while True:
-
-            # Fitness
-            print("="*60)
-            print("\t\tFITNESS")
-            print("="*60)
-            print('\n')
-            for species in self.species_list:
-                print("\tGenerating Fitness for Species #{}".format(species.ID))
+            for species in self.population:                                     # Fitness
+                print("Fitness Generation")
+                print("------------------")
+                print("\t{}\n".format(species))
                 self.fitness(species)
-            print("\n")
 
-            # Cull species
-            if self.cull():
+            if self.cull():                                                     # Culling
                 continue
 
-            # Selection
-            self.selection()
+            self.selection()                                                    # Selection
+            self.replication()                                                  # Replication
+            print("\n\n")
 
-            # Replication
-            self.replication()
-
-            # Check Speciation
-            self.speciation()
-
-
-    def cull(self):
-        for index, species in enumerate(self.species_list):
-            if species.cull:
-                print("="*60)
-                print("\t\tCULLING")
-                print("="*60)
-                print('\n')
-                if species.improvement < IMPROVEMENT_THRESHOLD:
-                    if len(self.species_list) > 1:
-                        print("\tCulling Species {}\n".format(species.ID))
-                        del self.species_list[index]
-                    else:
-                        print("\tOnly Species in environment. Reinitialize.\n")
-                        self.__init__()
-                        return True
-                    species.cull = False
-        return False
 
 
     def fitness(self, species):
-        # Play Game to generate fitness
-        flappy = FlappyBirdApp(species.organisms)
+        """
+            Fitness
+            -------
+        """
+
+        flappy = FlappyBirdApp(species)                                         # Play Game to generate fitness
         flappy.play()
 
-
-        # Initialize items needed for numpy sorting
-        dtype = [('id', int), ('fitness', float)]
-        unsorted_fitness_values = []
-        network_id_map = {}
+        dtype = [('id', int), ('fitness', float)]                               # Initialize items needed for numpy sorting
+        unsorted_fitness_values = []                                            # Initialize items needed for numpy sorting
+        organism_id_mapping = {}
 
 
         for bird_results in flappy.crash_info:
-            # Obtain pertinent info from game
-            organism = bird_results['network']
-            organism_id = organism.ID
+            organism = bird_results['network']                                  # Obtain pertinent info from game
             energy = bird_results['energy']
             distance = bird_results['distance']
 
-            # Fitness recalculation
-            fitness = distance - energy * 1.5
+            organism.fitness = distance - energy * 1.5                          # Assign fitness to network
+            unsorted_fitness_values.append((organism.fitness, organism.ID))     # Append fitness to unsorted array for later sorting
+            organism_id_mapping[organism.ID] = organism                             # Update network map to track ID with Network
 
-            # Assign fitness to network
-            organism.fitness = fitness
-
-            # Append fitness to unsorted array for later sorting
-            unsorted_fitness_values.append((fitness, organism_id))
-
-            # Update network map to track ID with Network
-            network_id_map[organism_id] = organism
+        species_fitness = np.array(unsorted_fitness_values, dtype=dtype)        # Cast unsorted into np array for sorting
+        sorted_species_fitness = np.sort(species_fitness, order='id')           # Sort species by fitness
 
 
-        # Adjust fitness for species
-        self.intra_species_fitness(unsorted_fitness_values, network_id_map)
+        for rank, (fitness, organism_id) in enumerate(sorted_species_fitness[::-1]):    # Rank the sorted species
+            organism = organism_id_mapping[organism_id]
+            organism.intra_species_rank = rank
+            organism.normalized_fitness = organism.fitness / len(sorted_species_fitness)  # Normalize fitness
+            # print("Organism ID: {}".format(organism_id))
+            # print("\tOrganism: {} -- Rank {} -- Fitness {} -- Normalized Fitness {}\n".format(organism, organism.intra_species_rank, organism.fitness, organism.normalized_fitness))
 
-
-        # Sort species by fitness
-        species_fitness = np.array(unsorted_fitness_values, dtype=dtype)
-        sorted_species_fitness = np.sort(species_fitness, order='id')
-
-
-        # Create sorted fitness results
-        for rank, (fitness, id_) in enumerate(sorted_species_fitness[::-1]):
-            network_id_map[id_].intra_species_rank = rank
+        # Generate species' generation fitness
+        species.generations_total_fitness()
 
 
 
 
-    def intra_species_fitness(self, unsorted_fitness_values, network_id_map):
-        for fitness, organism_id in unsorted_fitness_values:
-            adjusted_fitness = fitness / len(unsorted_fitness_values)
+    def cull(self):
+        """
+            Cull
+            ----
+        """
+        for index, species in enumerate(self.population):
+            if not species.cull:
+                return False
 
-            fitness = adjusted_fitness
-            network_id_map[organism_id].fitness = adjusted_fitness
-
-
-
-    def generate_species_fitness(self):
-        population_fitness_total = 0.0
-        for species in self.species_list:
-            species.species_fitness_sum()
-            population_fitness_total += species.total_fitness
-
-        return population_fitness_total
-
+            if species.improvement < IMPROVEMENT_THRESHOLD:
+                if len(self.population) > 1:
+                    del self.population[index]
+                    species.cull = False
+                else:
+                    self.__init__()
+                    return True
 
 
     def selection(self):
-        print("="*60)
-        print("\t\tSELECTION")
-        print("="*60)
-        print('\n')
-        # Fix this section to remove unfit organisms from species: 'cull the species'
-        self.top_species = {}
+        """
+            Selection
+            ---------
+        """
+        # Generate total fitness of population
+        self.__population_total_fitness()
 
-        # Generate total population fitness from each species fitness sum
-        # These ratios will be used for determining number of replication organisms per species
-        total_population_fitness = self.generate_species_fitness()
-        print("Total population fitness: {:.2f}".format(total_population_fitness))
-        print("-"*50)
+        for species in self.population:
+            # Determine how many organisms this species will produce in next generation
+            species.number_progeny = self.__calculate_progeny_number(species)
 
-        # Iterate through the species within the environment
-        for species in self.species_list:
-            print("Species ID {} -- Generation {}".format(species.ID, species.generation_number, species.total_fitness, species.cull))
+            survived_organisms = []
+            for organism in species.current_generation():
 
-            print("\tSpecies fitness sum: {:.2f}".format(species.total_fitness))
-            print("\tFitness improvement from last generation: {:.2f}".format(species.improvement))
-            # Determine number of organisms in species
-            # "Assigned a number of organims proportional to the sum of the adjusted fitnesses of its member organisms"
-            number_progeny = self.get_progeny_number(species, total_population_fitness)
+                if organism.intra_species_rank <= species.number_progeny:
+                    survived_organisms.append(organism)
 
-            print("\tNumber of Progeny: {}\n\n".format(number_progeny))
-            # Initialize new key for top species dictionary inidicating current species
-            self.top_species[(species.ID, species.generation_number, species.total_fitness, species.cull)] = []
-
-            # Iterate through organisms within the current species
-            for organism in species.organisms:
-                organism.number_progeny = int(number_progeny / 4)
-                # Get oragnism's intra species rank
-                rank = organism.intra_species_rank
-
-                # Check if rank is less than the cutoff; if so, append organism to top list within species
-                if rank < RANK_CUTOFF:
-                    self.top_species[(species.ID, species.generation_number, species.total_fitness, species.cull)].append(organism)
+            # Normalize organism fitness
+            species.prime_new_generation(survived_organisms)
 
 
-    def get_progeny_number(self, species, total_population_fitness):
-        species_fitness_sum = species.total_fitness
-        ratio = species_fitness_sum / total_population_fitness
+    def __population_total_fitness(self):
+        """
+            Generate Species Fitness
+            ------------------------
+        """
+        population_fitness_total = 0.0
+        for species in self.population:
+            population_fitness_total += species.generation_total_fitness
+
+        self.population_fitness = population_fitness_total
+
+
+    def __calculate_progeny_number(self, species):
+        """
+            Calculate Progeny Number
+            ------------------------
+        """
+        ratio = species.generation_total_fitness / self.population_fitness
         return int(ORGANISMS * ratio)
 
 
+
+
     def replication(self):
-
-        # Initialize new generation of species list (must contain Species-class objects)
-        new_species_generation = []
-
-        # Iterate through the species in top_species
-        for (species_ID, generation, total_fitness, cull), organisms in self.top_species.items():
-
-            # Initialize new list to hold the progeny of 2 species
-            new_organisms_list = []
-
-            # Iterate through organisms by 2 up until the second-to-last organism
-            for index, parent_organism_1 in enumerate(organisms[:int(len(organisms)/2):2]):
-
-                # Define second parent in list
-                parent_organism_2 = organisms[index+1]
-
-
-                # Replicate
-                number_progeny = parent_organism_1.number_progeny
-                for progeny_index in range(number_progeny):
-
-                    # Mate parent 1 with parent 2 to produce progeny
-                    progeny = parent_organism_1.mate(parent_organism_2)
-
-                    # Append progeny to list
-                    new_organisms_list.append(progeny)
-
-            # Create new generation of species from the progeny
-            new_species = Species(species_id=species_ID,
-                                  generation_number=generation+1,
-                                  organisms=new_organisms_list,
-                                  total_fitness=total_fitness,
-                                  cull=cull)
-
-            # Append to new species generation list
-            new_species_generation.append(new_species)
-
-        # Redefine species_list
-        self.species_list = new_species_generation
-
-
-
-
-    def speciation(self):
-        print("="*60)
-        print("\t\tSPECIATION")
-        print("="*60)
-        print('\n')
-
-        species_ID_list = []
-
-        for species in self.species_list:
-            species_ID_list.append(species.ID)
-            for organism in species.organisms:
-                species.is_compatible(organism)
-
-        # Check for similarities in new species list for grouping into new species
+        """
+            Replication
+            -----------
+            *** ISSUE: Need to track all new innovations in each species to ensure no double incrementing of
+            innovation numbers for same structure. ***
+        """
         new_organisms = []
-        for species in self.species_list:
-            for organism in species.organisms:
-                if not organism.species_matched:
-                    new_organisms.append(organism)
+        for species in self.population:
+            # Get number of progeny for species
 
-        # Create new species
-        if new_organisms:
-            new_species_ID = max(species_ID_list)+1
-            print("\tNew Species! ID {}".format(new_species_ID))
-            new_species_list = [Species(species_id=new_species_ID, generation_number=0, organisms=[new_organisms[0]])]
-            del new_organisms[0]
-            self.species_list.append(new_species_list[0])
+            for parent_index, parent_organism_1 in enumerate(species.survived_organisms[:-1:2]):
+                parent_organism_2 = species.survived_organisms[parent_index+1]
 
-        if new_organisms:
-            for new_organism in new_organisms:
+                parents = [parent_organism_1, parent_organism_2]
+
+                for progeny_index in range(2):
+                    crossover_chance = np.random.uniform()
+
+                    if crossover_chance <= CROSSOVER_CHANCE:
+                        progeny = parents[0].mate(parents[1])                       # Mate parent 1 with parent 2 to produce progeny
+                    else:
+                        progeny = parents[np.random.randint(len(parents))].mitosis()            # No crossover - just mitosis
+
+                    new_organisms.append(progeny)                              # Append progeny to list
+
+
+        # Speciation
+        self.__speciation(new_organisms)
+
+
+
+
+
+    def __speciation(self, new_organisms):
+        """
+            Speciation
+            ----------
+        """
+        new_population = []
+
+
+        # Check each new organism for a match to the currently existing species
+        # build list of unmatched organisms for speciation
+        unmatched_organisms = []
+        for species in self.population:
+
+            for organism in new_organisms:
+                if species.is_compatible(organism):
+                    species.update_next_generation(organism)
+                else:
+                    unmatched_organisms.append(organism)
+            species.set_next_generation()
+
+
+            if len(species.current_generation()) >= 1:
+                new_population.append(species)
+
+
+        if unmatched_organisms:                                                       # Create new species
+            print("New organism evolved!")
+            new_species = Species(organisms=[unmatched_organisms[0]])
+
+            # Create new species list
+            new_species_list = [new_species]
+            del unmatched_organisms[0]
+
+            if unmatched_organisms:
+                for organism in unmatched_organisms:
+                    # Check all new species for match with organism
+                    for new_species in new_species_list:
+                        if new_species.is_compatible(organism):
+                            current_generation = new_species.current_generation()
+                            current_generation.append(organism)
+
+                    # Organism wasn't matched to any new species - create new species
+                    if not organism.species_matched:
+                        new_species = Species(organism=[organism])
+                        new_species_list.append(new_species)
+
+                # Add all new species to the new population
                 for new_species in new_species_list:
-                    new_species.is_compatible(new_organism)
+                    new_population.append(new_species)
 
-                if not new_organism.species_matched:
-                    new_species_ID += 1
-                    print("\tNew Species! ID {}".format(new_species_ID))
-                    new_species_list.append(Species(species_id=new_species_ID, generation_number=0, organisms=[new_organism]))
+        self.population = new_population
 
-            for new_species in new_species_list[1:]:
-                self.species_list.append(new_species)
 
-        print("\n")
+
 
 if __name__ == '__main__':
     driver = System()

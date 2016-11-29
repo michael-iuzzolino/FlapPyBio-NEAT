@@ -28,3 +28,6 @@ class Gene(object):
         self.weight = weight
 
         self.enabled = True
+
+    def __repr__(self):
+        return "{}".format(self.innovation_number)

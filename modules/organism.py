@@ -33,6 +33,7 @@ class Organism(object):
         self.fitness = 0.0
         self.normalized_fitness = 0.0
         self.number_progeny = None
+        self.species_matched = False
 
 
 
@@ -95,7 +96,7 @@ class Organism(object):
             if (gene in species_gene_list) and (gene not in organism_gene_list):
                 number_disjoint_genes += 1
 
-        W = self.genome.ave_gene_weight - other.ave_gene_weight                 # Calculate difference of average gene weights of genomes
+        W = np.absolute(self.genome.ave_gene_weight - other.ave_gene_weight)                 # Calculate difference of average gene weights of genomes
         N = max(len(organism_gene_list), len(species_gene_list))                # Calculate max length genome
-
+        N = 1 if N <= 20 else N
         return number_excess_genes, number_disjoint_genes, W, N

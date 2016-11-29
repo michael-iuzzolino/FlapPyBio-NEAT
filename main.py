@@ -94,6 +94,9 @@ class System(object):
                 return False
 
             if species.improvement < IMPROVEMENT_THRESHOLD:
+                """
+                    Change this to mate top two species
+                """
                 if len(self.population) > 1:
                     del self.population[index]
                     species.cull = False
@@ -112,6 +115,9 @@ class System(object):
 
         for species in self.population:
             # Determine how many organisms this species will produce in next generation
+            """
+            SOME ISSUES HERE. Some species are generating way too many offspring
+            """
             species.number_progeny = self.__calculate_progeny_number(species)
 
             survived_organisms = []
@@ -222,10 +228,11 @@ class System(object):
                         if new_species.is_compatible(organism):
                             current_generation = new_species.current_generation()
                             current_generation.append(organism)
+                            organism.species_matched = True
 
                     # Organism wasn't matched to any new species - create new species
                     if not organism.species_matched:
-                        new_species = Species(organism=[organism])
+                        new_species = Species(organisms=[organism])
                         new_species_list.append(new_species)
 
                 # Add all new species to the new population

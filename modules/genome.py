@@ -204,13 +204,15 @@ class Genome(object):
         progeny_connection_matrix = np.zeros((len(progeny_neurons), len(progeny_neurons)))
         print("\tProgeny neurons: {}".format(progeny_neurons))
         print("\tProgeny genes: {}".format(progeny_genes))
-        print("\tConnection matrix")
-        print("{}".format(progeny_connection_matrix))
-        print("\n")
+
         for gene in progeny_genes:
             input_id = gene.input_neuron_id
             output_id = gene.output_neuron_id
             progeny_connection_matrix[input_id, output_id] = 1
+
+        print("\tConnection matrix")
+        print("{}".format(progeny_connection_matrix))
+        print("\n")
         print("\n")
 
         # 4. Create new genome
@@ -367,7 +369,7 @@ class Genome(object):
         new_neuron_id = self.__next_neuron_id()
         new_neuron = Neuron(neuron_id=new_neuron_id)
         self.neurons[new_neuron_id] = new_neuron
-    
+
         # Update connection_matrix for new matrix
         new_connection_matrix = np.zeros((len(self.neurons), len(self.neurons)))
         for row_index, row in enumerate(self.connection_matrix):

@@ -33,7 +33,7 @@ class Organism(object):
         self.fitness = 0.0
         self.normalized_fitness = 0.0
         self.number_progeny = None
-        self.species_matched = False
+        
 
 
 

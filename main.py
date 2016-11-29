@@ -29,7 +29,6 @@ class System(object):
             Run
             ---
         """
-
         while True:
             for species in self.population:                                     # Fitness
                 print("Fitness Generation")
@@ -97,12 +96,15 @@ class System(object):
                 """
                     Change this to mate top two species
                 """
+
+
                 if len(self.population) > 1:
                     del self.population[index]
                     species.cull = False
                 else:
                     self.__init__()
                     return True
+
 
 
     def selection(self):
@@ -120,11 +122,8 @@ class System(object):
             """
             species.number_progeny = self.__calculate_progeny_number(species)
 
-            survived_organisms = []
-            for organism in species.current_generation():
-
-                if organism.intra_species_rank <= species.number_progeny:
-                    survived_organisms.append(organism)
+            survived_organisms = [organism for organism in species.current_generation()
+                                        if organism.intra_species_rank <= species.number_progeny]
 
             # Normalize organism fitness
             species.prime_new_generation(survived_organisms)
@@ -152,7 +151,6 @@ class System(object):
 
 
 
-
     def replication(self):
         """
             Replication
@@ -170,7 +168,7 @@ class System(object):
 
                 parents = [parent_organism_1, parent_organism_2]
 
-                for progeny_index in range(2):
+                for progeny_index in range(len(parents)):
                     crossover_chance = np.random.uniform()
 
                     if crossover_chance <= CROSSOVER_CHANCE:
@@ -180,9 +178,9 @@ class System(object):
 
                     new_organisms.append(progeny)                              # Append progeny to list
 
-
         # Speciation
         self.__speciation(new_organisms)
+
 
 
 
@@ -224,20 +222,21 @@ class System(object):
             if unmatched_organisms:
                 for organism in unmatched_organisms:
                     # Check all new species for match with organism
+                    oragnism_matched_to_species = False
                     for new_species in new_species_list:
                         if new_species.is_compatible(organism):
                             current_generation = new_species.current_generation()
                             current_generation.append(organism)
-                            organism.species_matched = True
+                            oragnism_matched_to_species = True
 
                     # Organism wasn't matched to any new species - create new species
-                    if not organism.species_matched:
+                    if not oragnism_matched_to_species:
                         new_species = Species(organisms=[organism])
                         new_species_list.append(new_species)
 
                 # Add all new species to the new population
-                for new_species in new_species_list:
-                    new_population.append(new_species)
+                new_population += new_species_list
+
 
         self.population = new_population
 

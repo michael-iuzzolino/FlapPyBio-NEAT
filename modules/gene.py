@@ -24,7 +24,7 @@ class Gene(object):
         self.output_neuron_id = output_neuron_id
 
         if weight is None:
-            weight = np.random.randn()
+            weight = np.random.uniform(-1, 1)
         self.weight = weight
 
         self.enabled = enabled

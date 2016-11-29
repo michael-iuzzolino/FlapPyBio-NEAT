@@ -59,18 +59,18 @@ def displayStat(SCREEN, stat, text=None):
         elif text == "species":
             """displays score in center of screen"""
             for digit in scoreDigits:
-                SCREEN.blit(IMAGES['numbers'][digit], (235, 30))
-
-            SCREEN.blit(IMAGES[text], (205, 0))
+                SCREEN.blit(IMAGES['numbers'][digit], (Xoffset+100, 30))
+                Xoffset += IMAGES['numbers'][digit].get_width()
+            SCREEN.blit(IMAGES[text], (200, 0))
 
         elif text == "generation":
             for digit in scoreDigits:
-                SCREEN.blit(IMAGES['numbers'][digit], (Xoffset+130, 368))
+                SCREEN.blit(IMAGES['numbers'][digit], (Xoffset+100, 368))
                 Xoffset += IMAGES['numbers'][digit].get_width()
             SCREEN.blit(IMAGES[text], (190, 395))
 
         elif text == "generation_size":
             for digit in scoreDigits:
-                SCREEN.blit(IMAGES['numbers'][digit], (Xoffset-110, 368))
+                SCREEN.blit(IMAGES['numbers'][digit], (Xoffset-100, 368))
                 Xoffset += IMAGES['numbers'][digit].get_width()
             SCREEN.blit(IMAGES['organisms'], (0, 400))

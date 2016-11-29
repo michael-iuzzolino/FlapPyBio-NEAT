@@ -19,6 +19,7 @@ class Genome(object):
                 VALUE = the GENE object containing the connection information
 
     """
+    innovation_dictionary = {}
 
     def __init__(self, neurons={}, genes=[], connection_matrix=[]):
 
@@ -40,17 +41,23 @@ class Genome(object):
             connection_matrix[:INPUTS, INPUTS:] = 1
 
 
-
         self.neurons = neurons
         self.genes = genes
         self.connection_matrix = connection_matrix
 
-
+        self.__init_innovation_dict()
 
         self.__generate_ave_gene_weight()
 
+
     def __repr__(self):
         return "{}".format(self.__innovation_numbers())
+
+
+    def __init_innovation_dict(self):
+        Genome.innovation_dictionary = { gene.innovation_number : (gene.input_neuron_id, gene.output_neuron_id)
+                                            for gene in self.genes }
+
 
     def __neuron_ids(self):
         return [neuron_id for neuron_id in self.neurons.keys()]
@@ -63,9 +70,17 @@ class Genome(object):
     def __innovation_numbers(self):
         return [gene.innovation_number for gene in self.genes]
 
-    def __next_innovation_number(self):
-        innovation_numbers = self.__innovation_numbers()
+    def __generate_innovation_number(self, new_input_id, new_output_id):
+
+        for innovation_number, (input_id, output_id) in Genome.innovation_dictionary.items():
+            if new_input_id == input_id and new_output_id == output_id:
+                print("MATCH -- INs: {} to {} -- OUTs: {} to {}".format(new_input_id, input_id, new_output_id, output_id))
+                return innovation_number
+
+        innovation_numbers = [key for key in Genome.innovation_dictionary.keys()]
         new_innovation_number = max(innovation_numbers)+1
+        Genome.innovation_dictionary[new_innovation_number] = (new_input_id, new_output_id)
+
         return new_innovation_number
 
     def __generate_connection_matrix(self, progeny_neurons, progeny_genes):
@@ -160,7 +175,8 @@ class Genome(object):
 
         parent_1_genes = self.genes
         parent_2_genes = other.genes
-
+        print("parent 1 genes: {}".format(parent_1_genes))
+        print("parent 2 genes: {}".format(parent_2_genes))
         for parent_1_gene in parent_1_genes:
             gene_1_innovation = parent_1_gene.innovation_number
 
@@ -273,9 +289,8 @@ class Genome(object):
 
             # Check for uniform mutation
             if weight_mutation_chance <= WEIGHT_MUTATION_RATE:
-                weight_change = self.__mutation_chance()
-                direction_change = -1.0 if np.random.randint(2) == 0 else +1.0
-                gene.weight += direction_change * weight_change
+                weight_change = np.random.uniform(-1, 1)
+                gene.weight += weight_change
                 uniform_mutation = True
 
             # Check for completely new random weight mutation
@@ -348,12 +363,15 @@ class Genome(object):
         print("\t\tCreating new connection between nodes {} and {}".format(input_id, output_id))
 
         # Generate innovation number!
-        innovation_number = self.__next_innovation_number()
+        innovation_number = self.__generate_innovation_number(input_id, output_id)
         new_gene = Gene(innovation_number=innovation_number,
                         input_neuron_id=input_id,
                         output_neuron_id=output_id,
                         weight=None)
         self.genes.append(new_gene)
+
+        # Update innovation list
+        Genome.innovation_dictionary[innovation_number] = (input_id, output_id)
 
         # Update connection_matrix
         self.connection_matrix[input_id][output_id] = 1
@@ -377,6 +395,7 @@ class Genome(object):
                 new_connection_matrix[row_index][col_index] = value
 
         self.connection_matrix = new_connection_matrix
+
 
         # Search connection matrix for value positions
         valid_connections = []
@@ -405,6 +424,10 @@ class Genome(object):
 
 
 
+
+
+
+
         # Deactivate old connection in connection genome
         for gene in self.genes:
             gene_input_id = gene.input_neuron_id
@@ -421,24 +444,46 @@ class Genome(object):
 
         # Create 2 new connection genes
         # Gene 1
-
         print("\t\tCreating new connection between nodes {} and {}".format(input_id, new_neuron_id))
 
         # Generate innovation number!
-        innovation_number = self.__next_innovation_number()
-        new_gene_1 = Gene(innovation_number=innovation_number,
+        innovation_number_1 = self.__generate_innovation_number(input_id, new_neuron_id)
+        new_gene_1 = Gene(innovation_number=innovation_number_1,
                         input_neuron_id=input_id,
                         output_neuron_id=new_neuron_id,
                         weight=1.0)
         self.genes.append(new_gene_1)
 
+        # Update connection matrix
+        self.connection_matrix[input_id][new_neuron_id] = 1
+
         # Gene 2
         print("\t\tCreating new connection between nodes {} and {}".format(new_neuron_id, output_id))
 
+
         # Generate innovation number!
-        innovation_number = self.__next_innovation_number()
-        new_gene_2 = Gene(innovation_number=innovation_number,
-                        input_neuron_id=new_neuron_id,
-                        output_neuron_id=output_id,
-                        weight=previous_weight)
+        innovation_number_2 = self.__generate_innovation_number(new_neuron_id, output_id)
+        new_gene_2 = Gene(innovation_number=innovation_number_2,
+                          input_neuron_id=new_neuron_id,
+                          output_neuron_id=output_id,
+                          weight=previous_weight)
         self.genes.append(new_gene_2)
+        # Update connection matrix
+        self.connection_matrix[new_neuron_id][output_id] = 1
+
+        print("New Connection Matrix")
+        print("{}".format(self.connection_matrix))
+
+        self.__gene_error_check()
+
+
+    def __gene_error_check(self):
+        innovation_dict = { gene.innovation_number : 0 for gene in self.genes }
+        for gene in self.genes:
+            gene_innovation = gene.innovation_number
+            innovation_dict[gene_innovation] += 1
+
+        for inno_id, count in innovation_dict.items():
+            if count > 1:
+                print("ERROR ERROR ERROR")
+                print("genes: {}".format(self.genes))

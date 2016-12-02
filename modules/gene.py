@@ -14,7 +14,6 @@ class Gene(object):
             5. Enabled / Disabled
     """
 
-
     def __init__(self, innovation_number=None, input_neuron_id=None, output_neuron_id=None, weight=None, enabled=True):
 
         self.innovation_number = innovation_number

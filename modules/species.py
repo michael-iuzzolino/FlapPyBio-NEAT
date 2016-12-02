@@ -5,42 +5,62 @@ import numpy as np
 np.random.seed()
 
 class Species(object):
-	"""
-		The species contains all of the organisms that are genetically similar. This protects novel structures from immediate extinction.
-		The key elements of the class are:
-			1. List of organisms
-			2. Representative genome against which organisms are compared to determine species membership
-			3. Species ID
-			4. CULLING - removes unfit organisms from the species (this may also include species that evolve towards other speices)
-	"""
-
 	ID = 0
 
-	def __init__(self, organisms=[]):
+	def __init__(self, new_species=False, initial_organism=None, number_of_organisms=ORGANISMS):
 
-		# Define species ID
+		if new_species:
+			self.organisms = [initial_organism]
+
+		else:
+			self.organisms = [Organism() for _ in range(number_of_organisms)]
+
+
+		self.representative_genome = self.organisms[0].genome
+
 		self.ID = Species.ID
 		Species.ID += 1
 
-		# Initialize parent generation number
-		self.current_generation_index = 0
-
-		if not organisms:
-			organisms = [Organism() for _ in range(ORGANISMS)]
-
-		self.generations = [organisms]
-
-		# Determine representative genome
-		# This should be a random genome from the PREVIOUS generation of the species
-		self.representative_genome = organisms[0].genome
+		self.top_fitness = 0.0
+		self.average_fitness = 0.0
+		self.stale_index = 0
 
 
 
-		# Initialize other useful parameters
-		self.generation_total_fitness = 0.0
-		self.cull = False
-		self.improvement = 0.0
-		self.number_progeny = None
+	def __repr__(self):
+		return "{}".format(self.ID)
+
+	def __len__(self):
+		return len(self.organisms)
+
+	def __iter__(self):
+		for organism in self.organisms:
+			yield organism
+
+
+
+	def generate_average_fitness(self):
+		average_fitness = 0.0
+		for organism in self.organisms:
+			average_fitness += organism.fitness
+
+		self.average_fitness = average_fitness / len(self.organisms)
+
+
+	def mate(self):
+
+		if np.random.uniform() < CROSSOVER_CHANCE:
+			parent_1 = self.organisms[np.random.randint(len(self.organisms))]
+			parent_2 = self.organisms[np.random.randint(len(self.organisms))]
+			progeny = parent_1.mate(parent_2)
+		else:
+			parent = self.organisms[np.random.randint(len(self.organisms))]
+			progeny = parent.mitosis()
+
+		return progeny
+
+
+
 
 
 
@@ -49,66 +69,10 @@ class Species(object):
 		E, D, W, N = organism.compare_genomes(self.representative_genome)
 
 		# Calculate average weight differences of matching genes
-		# Find length of larger genome, N
-		DELTA = (C1 * E / N) + (C2 * D / N) + C3*W
-
+		delta = (C1 * E / N) + (C2 * D / N) + C3*W
+		print("DELTA: {}".format(delta))
 		# New species!
-		if DELTA < DELTA_T:
+		if delta < DELTA_T:
 			return True
 		else:
 			return False
-
-
-
-	def generations_total_fitness(self):
-		previous_fitness = self.generation_total_fitness
-		new_fitness = 0.0
-		for organism in self.generations[self.current_generation_index]:
-			new_fitness += organism.fitness
-
-		self.generation_total_fitness = new_fitness
-
-		fitness_change = new_fitness - previous_fitness
-
-		self.improvement += fitness_change
-
-		# Determine culling and improvement
-		if self.current_generation_index % ROUNDS_BEFORE_CULLING == ROUNDS_BEFORE_CULLING-1:
-			self.cull = True
-
-
-	def current_generation(self):
-		return self.generations[self.current_generation_index]
-
-
-	def prime_new_generation(self, survived_organisms):
-
-		# Normalize fitness of survived organisms
-		for organism in survived_organisms:
-			organism.normalized_fitness = organism.fitness / len(survived_organisms)    # Normalize fitness to species
-
-		self.survived_organisms = survived_organisms
-
-		self.next_generation = []
-
-
-	def update_next_generation(self, new_organism):
-		self.next_generation.append(new_organism)
-
-
-
-	def set_next_generation(self):
-
-		# Set next generation's representative genome randomly from this set
-		current_generation = self.generations[self.current_generation_index]
-		random_genome_index = np.random.randint(len(current_generation))
-		self.representative_genome = current_generation[random_genome_index].genome
-
-		# Move to next generation
-		self.current_generation_index += 1
-		self.generations.append(self.next_generation)
-
-
-
-	def __repr__(self):
-		return "Species ID: {} -- Generation {} -- Rep Genome: {}".format(self.ID, self.current_generation_index, self.representative_genome)

@@ -30,19 +30,27 @@ class Organism(object):
         self.genome = genome
 
         self.intra_species_rank = None
+        self.global_rank = None
+
         self.fitness = 0.0
+
+
+
+
+        # Maybe can delete
         self.normalized_fitness = 0.0
         self.number_progeny = None
-        
 
 
 
+    def __repr__(self):
+        return "Rank: {} -- Fitness: {}".format(self.intra_species_rank, self.fitness)
     def learn(self, information):
 
         information = np.asarray(information).reshape(1, -1)                    # Normalize input
         information = preprocessing.normalize(information, norm='l2')
 
-        self.genome.activate(information)                                                  # Feed forward to generate output
+        self.genome.activate(information)                                       # Feed forward to generate output
 
 
     def decision(self):
@@ -53,8 +61,15 @@ class Organism(object):
 
 
     def mate(self, other):
-        parent_1_genome = self.genome.copy()
-        parent_2_genome = other.genome.copy()
+
+        # Ensure order is correct: parent 1 must have higher fitness than 2
+        if self.intra_species_rank > other.intra_species_rank:
+            parent_1_genome = self.genome.copy()
+            parent_2_genome = other.genome.copy()
+        else:
+            parent_2_genome = self.genome.copy()
+            parent_1_genome = other.genome.copy()
+
 
         new_genome = parent_1_genome.crossover(parent_2_genome)
 
@@ -96,7 +111,7 @@ class Organism(object):
             if (gene in species_gene_list) and (gene not in organism_gene_list):
                 number_disjoint_genes += 1
 
-        W = np.absolute(self.genome.ave_gene_weight - other.ave_gene_weight)                 # Calculate difference of average gene weights of genomes
+        W = np.absolute(self.genome.ave_gene_weight - other.ave_gene_weight)    # Calculate difference of average gene weights of genomes
         N = max(len(organism_gene_list), len(species_gene_list))                # Calculate max length genome
-        N = 1 if N <= 20 else N
+        N = 1 if N <= 20 else N                                                 # Value of 20 comes from NEAT paper
         return number_excess_genes, number_disjoint_genes, W, N

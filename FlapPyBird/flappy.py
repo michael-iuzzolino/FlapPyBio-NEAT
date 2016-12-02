@@ -12,7 +12,7 @@ from FlapPyBird.modules.base import Base
 
 class FlappyBirdApp(object):
 
-    def __init__(self, species):
+    def __init__(self, species, generation):
         global SCREEN, FPSCLOCK
 
         pygame.init()
@@ -26,10 +26,12 @@ class FlappyBirdApp(object):
         """  CREATE PLAYER """
         self.movementInfo = tools.load_and_initialize()
 
-        neural_networks = species.current_generation()
+        neural_networks = species.organisms
+
         self.species_ID = species.ID
-        self.generation_number = species.current_generation_index
+        self.generation_number = generation
         self.generation_size = len(neural_networks)
+
         self.birds = [Bird(self.movementInfo, neural_network) for neural_network in neural_networks]
 
         """ CREATE PIPES """

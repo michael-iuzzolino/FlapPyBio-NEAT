@@ -28,29 +28,15 @@ class System(object):
             ---
         """
         while True:
-
-            print("\n")
-            print("="*60)
-            print("\t\tGenerating Fitness")
-            print("="*60)
-            for species in self.pool:                                # Fitness
-                print("\t Species: {}".format(species))
+            for species in self.pool:                                           # Fitness
+                print("\t{}".format(species))
                 self.fitness(species, self.pool.generation)
 
-            # Culling and ranking
-            self.pool.cull_and_rank_sequence()
-
             # SELECT
-            self.pool.select()
+            self.pool.selection()
 
             # REPLICATE
             self.pool.replicate()
-
-
-
-
-
-
 
 
 
@@ -60,44 +46,37 @@ class System(object):
             -------
         """
 
-        flappy = FlappyBirdApp(species, generation)                                         # Play Game to generate fitness
+        flappy = FlappyBirdApp(species, generation)                             # Play Game to generate fitness
         flappy.play()
-
-        dtype = [('id', int), ('fitness', float)]                               # Initialize items needed for numpy sorting
-        unsorted_fitness_values = []                                            # Initialize items needed for numpy sorting
-        organism_id_mapping = {}
-
 
         for bird_results in flappy.crash_info:
             organism = bird_results['network']                                  # Obtain pertinent info from game
             energy = bird_results['energy']
             distance = bird_results['distance']
 
-            organism.fitness = distance - energy * 2.5                          # Assign fitness to network
+            fitness = distance - energy * 2.5
+            organism.fitness = fitness if fitness > 0 else -1.0                 # Assign fitness to network
 
             if organism.fitness > self.pool.max_fitness:
                 self.pool.max_fitness = organism.fitness
 
-            unsorted_fitness_values.append((organism.fitness, organism.ID))     # Append fitness to unsorted array for later sorting
-            organism_id_mapping[organism.ID] = organism                             # Update network map to track ID with Network
-
-        species_fitness = np.array(unsorted_fitness_values, dtype=dtype)        # Cast unsorted into np array for sorting
-        sorted_species_fitness = np.sort(species_fitness, order='id')           # Sort species by fitness
-
-
-        for rank, (fitness, organism_id) in enumerate(sorted_species_fitness[::-1]):    # Rank the sorted species
-            organism = organism_id_mapping[organism_id]
-            organism.fitness = fitness
-            organism.intra_species_rank = rank
-
-
-
-
-
+        species.set_intra_species_rank()
 
 
 
 
 if __name__ == '__main__':
+    random_pipes = False
+
+    with open('FlapPyBird/resources/config.py', 'r') as infile:
+        configure_file = infile.readlines()
+
+    with open('FlapPyBird/resources/config.py', 'w') as outfile:
+        for line in configure_file:
+            if 'RANDOM_PIPES' in line:
+                line = 'RANDOM_PIPES = {}\n'.format(random_pipes)
+            outfile.write(line)
+
+
     driver = System()
     driver.run()

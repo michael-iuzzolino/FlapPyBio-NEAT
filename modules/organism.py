@@ -20,6 +20,7 @@ class Organism(object):
     ID = id(0)
 
     def __init__(self, genome=None, organism_id=None):
+
         if not organism_id:
             organism_id = Organism.ID
             Organism.ID += id(1)
@@ -29,22 +30,15 @@ class Organism(object):
             genome = Genome()
         self.genome = genome
 
+        self.fitness = 0.0
         self.intra_species_rank = None
         self.global_rank = None
-
-        self.fitness = 0.0
-
-
-
-
-        # Maybe can delete
-        self.normalized_fitness = 0.0
-        self.number_progeny = None
-
 
 
     def __repr__(self):
         return "Rank: {} -- Fitness: {}".format(self.intra_species_rank, self.fitness)
+
+
     def learn(self, information):
 
         information = np.asarray(information).reshape(1, -1)                    # Normalize input
@@ -61,7 +55,6 @@ class Organism(object):
 
 
     def mate(self, other):
-
         # Ensure order is correct: parent 1 must have higher fitness than 2
         if self.intra_species_rank > other.intra_species_rank:
             parent_1_genome = self.genome.copy()

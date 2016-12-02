@@ -1,5 +1,6 @@
 from FlapPyBird.resources.config import *
 import pygame, random
+import numpy as np
 
 class Bird(object):
     def __init__(self, player_index_gen, neural_network):
@@ -67,8 +68,9 @@ class Bird(object):
 
         if self.collision:
             # Values returned to species.py
-            self.crashInfo = {  
-                'network': self.neural_network,               
+
+            self.crashInfo = {
+                'network': self.neural_network,
                 'distance': self.distance*-1,
                 'energy': self.energy_used,
             }

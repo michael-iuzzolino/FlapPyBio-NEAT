@@ -23,7 +23,7 @@ class Pool(object):
         for species in self.species:
             yield species
 
-    def cull_and_rank_sequence(self):
+    def __prime_selection(self):
         self.cull()
 
         # 2. Rank globally
@@ -37,6 +37,7 @@ class Pool(object):
 
         # 5. Remove weak species
         self.remove_weak_species()
+
 
 
     def cull(self, cull_to_one=False):
@@ -59,26 +60,18 @@ class Pool(object):
         for species in self.species:
             global_organisms += species.organisms
 
-
-        """ MUST BE BETTER WAY TO RANK! """
         # Get unsorted ranks
         dtype = [('id', int), ('fitness', float)]                               # Initialize items needed for numpy sorting
-        unsorted_rankings = []                                                  # Initialize items needed for numpy sorting
-        organism_id_mapping = {}
 
-        for organism in global_organisms:
-            unsorted_rankings.append((organism.fitness, organism.ID))           # Append fitness to unsorted array for later sorting
-            organism_id_mapping[organism.ID] = organism                         # Update network map to track ID with Network
+        organism_id_mapping = { organism.ID : organism for organism in global_organisms }
+        unsorted_rankings = [ (organism.ID, organism.fitness) for organism in global_organisms ]              # Initialize items needed for numpy sorting
 
         species_fitness = np.array(unsorted_rankings, dtype=dtype)              # Cast unsorted into np array for sorting
-        sorted_rankings = np.sort(species_fitness, order='id')                  # Sort species by fitness
+        sorted_rankings = np.sort(species_fitness, order='fitness')[::-1]             # Sort species by fitness
 
 
-        for rank, (fitness, organism_id) in enumerate(sorted_rankings[::-1]):   # Rank the sorted species
-            organism = organism_id_mapping[organism_id]
-            organism.global_rank = rank
-
-
+        for rank, (organism_id, fitness) in enumerate(sorted_rankings):   # Rank the sorted species
+            organism_id_mapping[organism_id].global_rank = rank
 
 
     def remove_stale_species(self):
@@ -99,6 +92,7 @@ class Pool(object):
             if (species.stale_index < SPECIES_STALE_INDEX_THRESHOLD) or (species.top_fitness >= self.max_fitness):
                 survived_species.append(species)
 
+        del self.species
         self.species = survived_species
 
 
@@ -110,9 +104,9 @@ class Pool(object):
         total_average_fitness = self.total_average_fitness()
 
         for species in self.species:
-            breed = np.floor(species.average_fitness / total_average_fitness * ORGANISMS)
-
-            if breed >= 1.0:
+            breed = int(np.floor(species.average_fitness / total_average_fitness * POPULATION))
+            print("BREED: {}".format(breed))
+            if breed >= WEAK_BREED_THRESHOLD:
                 survived_species.append(species)
 
         self.species = survived_species
@@ -126,22 +120,27 @@ class Pool(object):
         return total
 
 
-    def select(self):
+    def selection(self):
+
+        self.__prime_selection()
+
         total_average_fitness = self.total_average_fitness()
         self.progeny = []
 
         for species in self.species:
-            breeds = int(np.floor(species.average_fitness / total_average_fitness * ORGANISMS) - 1.0)
-
+            breeds = int(np.floor(species.average_fitness / total_average_fitness * POPULATION) - 1.0)
+            print("\tSpecies {} -- Breeds: {}".format(species.ID, breeds))
             for breed in range(breeds):
                 self.progeny.append(species.mate())
-
+            print("\n")
         # cull
         self.cull(True)
 
 
+
     def replicate(self):
-        while len(self.progeny) + len(self.species) < ORGANISMS:
+        print("len progeny: {}\t----\tlen species: {}".format(len(self.progeny), len(self.species)) )
+        while len(self.progeny) + len(self.species) < POPULATION:
             random_species_index = np.random.randint(len(self.species))
             random_species = self.species[random_species_index]
             self.progeny.append(random_species.mate())

@@ -50,6 +50,8 @@ class Genome(object):
         self.__generate_ave_gene_weight()
 
 
+
+
     def __repr__(self):
         return "{}".format(self.__innovation_numbers())
 
@@ -167,18 +169,11 @@ class Genome(object):
             5) return it to calling function
         """
 
-        # print("\n\tCrossover")
-        # print("\t---------")
-
         # 1. Create new connection genome from parents
-        progeny_genes = []
-
-        # Assign parent genes and ensure order is correct - parent_1_genes must be higher fitness
         parent_1_genes = self.genes
         parent_2_genes = other.genes
-        # print("parent 1 genes: {}".format(parent_1_genes))
-        # print("parent 2 genes: {}".format(parent_2_genes))
 
+        progeny_genes = []
         for parent_1_gene in parent_1_genes:
             gene_1_innovation = parent_1_gene.innovation_number
 
@@ -193,50 +188,29 @@ class Genome(object):
                         break
 
             new_gene = parent_1_gene.copy()
-
             progeny_genes.append(new_gene)
-
-
-
-
-
-
-
-
-
 
         # 2. Create new neuron dictionary from new connection genes
         parent_1_neurons = set([neuron_ID for neuron_ID in self.neurons.keys()])
         parent_2_neurons = set([neuron_ID for neuron_ID in other.neurons.keys()])
         neuron_ids = list(parent_1_neurons | parent_2_neurons)
-
         progeny_neurons = { neuron_id : Neuron(neuron_id=neuron_id) for neuron_id in neuron_ids}
-
 
         # 3. Create new connection matrix from new connection genes
         progeny_connection_matrix = np.zeros((len(progeny_neurons), len(progeny_neurons)))
-        # print("\tProgeny neurons: {}".format(progeny_neurons))
-        # print("\tProgeny genes: {}".format(progeny_genes))
-
         for gene in progeny_genes:
             input_id = gene.input_neuron_id
             output_id = gene.output_neuron_id
             progeny_connection_matrix[input_id, output_id] = 1
 
-        # print("\tConnection matrix")
-        # print("{}".format(progeny_connection_matrix))
-        # print("\n")
-        # print("\n")
-
         # 4. Create new genome
         new_genome = Genome(progeny_neurons, progeny_genes, progeny_connection_matrix)
-        # 5. Return
+
         return new_genome
 
 
 
     def __assign_unique_genes(self, parents_unique_genes, progeny_neurons, progeny_genes):
-
         for unique_gene in parents_unique_genes:
             for gene in parents_unique_genes:
                 progeny_genes.append(gene)
@@ -250,21 +224,28 @@ class Genome(object):
         """
             There are a few types of mutations.
             A. Mutate weights of synapses
-            B. Mutate connections (GENOME list is updated)  [TOPOLOGY Change]
+            B. Enable / Disable links
+            C. Mutate connections (GENOME list is updated)  [TOPOLOGY Change]
                 i. Add connection between existing neurons
                 ii. Remove connection between existing neurons (i.e., set enable of a random gene as enable = False)
-            C. Mutate neurons (NEURONS dict is updated; GENOME list is updated) [TOPOLOGY Change]
+            D. Mutate neurons (NEURONS dict is updated; GENOME list is updated) [TOPOLOGY Change]
                 i. Add neuron to NEURONS dictionary and ...
                         -- Disable previous link in GENOME and add two new links to GENOME
                 ii. Remove neuron from NEURONS dictionary and ...
                         -- WE WON'T IMPLEMENT THIS RIGHT NOW since we are building up complexity rather than reducing it.
         """
 
-
-
         connection_weight_mutation_chance = self.__mutation_chance()
-        if connection_weight_mutation_chance > CONNECTION_WEIGHT_MUTATION_RATE:
+        if connection_weight_mutation_chance <= CONNECTION_WEIGHT_MUTATION_RATE:
             self.__mutate_weights()                                                 # Weight mutations
+
+        enable_mutation_chance = self.__mutation_chance()
+        if enable_mutation_chance <= ENABLE_MUTATION_RATE:
+            self.__mutate_enable(enable=True)
+
+        disable_mutation_chance = self.__mutation_chance()
+        if disable_mutation_chance <= DISABLE_MUTATION_RATE:
+            self.__mutate_enable(enable=False)
 
         connection_mutation_chance = self.__mutation_chance()
         if connection_mutation_chance <= CONNECTION_MUTATION_RATE:
@@ -274,7 +255,18 @@ class Genome(object):
         if neuron_mutation_chance <= NEURON_MUTATION_RATE:
             self.__mutate_nodes()                                                   # Node mutations
 
+    def __mutate_enable(self, enable):
+        candidate_genes = []
+        for gene in self.genes:
+            if gene.enabled != enable:
+                candidate_genes.append(gene)
 
+        if not candidate_genes:
+            return
+
+        random_candidate_index = np.random.randint(len(candidate_genes))
+        random_candidate_gene = candidate_genes[random_candidate_index]
+        random_candidate_gene.enabled = not gene.enabled
 
     def __mutate_weights(self):
 
@@ -282,19 +274,13 @@ class Genome(object):
         for gene in self.genes:
 
             weight_mutation_chance = self.__mutation_chance()
-            uniform_mutation = False
 
             # Check for uniform mutation
             if weight_mutation_chance <= WEIGHT_MUTATION_RATE:
-                weight_change = np.random.uniform(-1, 1)
-                gene.weight += weight_change
-                uniform_mutation = True
+                gene.weight += np.random.uniform(-1, 1) * STEP_SIZE * 2.0
+            else:
+                gene.weight = np.random.uniform(-1, 1)
 
-            # Check for completely new random weight mutation
-            if not uniform_mutation:
-                chance_new_weight = self.__mutation_chance()
-                if chance_new_weight <= NEW_WEIGHT_MUTATION_RATE:
-                    gene.weight = np.random.randn()
 
 
 

@@ -1,3 +1,3 @@
 # FlapPyBio-NEAT
-
-sh run.sh
+To run the program, navigate to folder in term and enter
+  sh run.sh

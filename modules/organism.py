@@ -18,17 +18,18 @@ class Organism(object):
             4. DECISION: Output decision (flap or not flap) sent to FlapPyBird here
     """
     ID = id(0)
+    ID_counter = 1
 
     def __init__(self, genome=None, organism_id=None):
 
         if not organism_id:
             organism_id = Organism.ID
-            Organism.ID += id(1)
+            Organism.ID = id(Organism.ID_counter)
+            Organism.ID_counter += 1
+
         self.ID = organism_id
 
-        if not genome:
-            genome = Genome()
-        self.genome = genome
+        self.genome = Genome() if not genome else genome
 
         self.fitness = 0.0
         self.intra_species_rank = None
@@ -36,7 +37,7 @@ class Organism(object):
 
 
     def __repr__(self):
-        return "Rank: {} -- Fitness: {}".format(self.intra_species_rank, self.fitness)
+        return "Rank: {} -- Fitness: {} -- Genome {}".format(self.intra_species_rank, self.fitness, self.genome)
 
 
     def learn(self, information):
@@ -49,7 +50,7 @@ class Organism(object):
 
     def decision(self):
         raw_output = self.genome.neurons[INPUTS].output                         # Obtain output from output layer
-        output = 1 if raw_output >= 0.5 else 0
+        output = 1 if raw_output >= FLAP_THRESHOLD else 0
 
         return output
 
@@ -63,7 +64,6 @@ class Organism(object):
             parent_2_genome = self.genome.copy()
             parent_1_genome = other.genome.copy()
 
-
         new_genome = parent_1_genome.crossover(parent_2_genome)
 
         # Mutations
@@ -72,9 +72,8 @@ class Organism(object):
         return Organism(genome=new_genome)
 
 
-    def mitosis(self):
+    def clone(self):
         new_genome = self.genome.copy()
-        new_genome.mutate()
         return Organism(genome=new_genome)
 
 
@@ -107,4 +106,5 @@ class Organism(object):
         W = np.absolute(self.genome.ave_gene_weight - other.ave_gene_weight)    # Calculate difference of average gene weights of genomes
         N = max(len(organism_gene_list), len(species_gene_list))                # Calculate max length genome
         N = 1 if N <= 20 else N                                                 # Value of 20 comes from NEAT paper
+
         return number_excess_genes, number_disjoint_genes, W, N

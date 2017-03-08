@@ -9,12 +9,7 @@ class Species(object):
 
     def __init__(self, new_species=False, initial_organism=None, number_of_organisms=POPULATION):
 
-        if new_species:
-            self.organisms = [initial_organism]
-
-        else:
-            self.organisms = [Organism() for _ in range(number_of_organisms)]
-
+        self.organisms = [initial_organism] if new_species else [Organism() for _ in range(number_of_organisms)]
 
         self.representative_genome = self.organisms[0].genome
 
@@ -23,8 +18,11 @@ class Species(object):
 
         self.top_fitness = 0.0
         self.average_fitness = 0.0
+        self.fitness_sum = 0
         self.stale_index = 0
 
+        self.parents = []
+        self.progeny = []
 
 
     def __repr__(self):
@@ -46,30 +44,37 @@ class Species(object):
         unsorted_fitness = np.array(unsorted_fitness, dtype=dtype)
         sorted_fitness = np.sort(unsorted_fitness, order='fitness')[::-1]
 
+        sorted_organisms = []
+
         for rank, (organism_id, fitness) in enumerate(sorted_fitness):
             organism_map[organism_id].intra_species_rank = rank
+            sorted_organisms.append(organism_map[organism_id])
+
+        self.organisms = sorted_organisms
 
 
     def generate_average_fitness(self):
-        average_fitness = 0.0
-        for organism in self.organisms:
-            average_fitness += organism.fitness
+        self.fitness_sum = 0.0
 
-        self.average_fitness = average_fitness / len(self.organisms)
+        for organism in self.organisms:
+            self.fitness_sum += organism.fitness
+
+        self.average_fitness = self.fitness_sum / len(self.organisms)
 
 
     def mate(self):
 
         if np.random.uniform() < CROSSOVER_CHANCE:
-            parent_1 = self.organisms[np.random.randint(len(self.organisms))]
-            parent_2 = self.organisms[np.random.randint(len(self.organisms))]
+
+            parent_1 = self.parents[np.random.randint(len(self.parents))]
+            parent_2 = self.parents[np.random.randint(len(self.parents))]
             progeny = parent_1.mate(parent_2)
+
         else:
-            parent = self.organisms[np.random.randint(len(self.organisms))]
-            progeny = parent.mitosis()
+            parent = self.parents[np.random.randint(len(self.parents))]
+            progeny = parent.clone()
 
         return progeny
-
 
 
 

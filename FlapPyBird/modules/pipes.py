@@ -2,13 +2,25 @@ from FlapPyBird.resources.config import *
 import random
 
 class Pipe(object):
+    Number = 0
+    Sequence = [0, 20, 40, 20, 40]
 
     def __init__(self):
-        random.seed() if (RANDOM_PIPES) else random.seed(5)
+        if (RANDOM_PIPES):
+            print("HERE")
+            random.seed()
+            # y of gap between upper and lower pipe
+            gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
+        else:
+            # y of gap between upper and lower pipe
+            gapY = Pipe.Sequence[Pipe.Number % len(Pipe.Sequence)]
+            Pipe.Number += 1
+            #gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
 
         # y of gap between upper and lower pipe
-        gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
         gapY += int(BASEY * 0.2)
+
+
         pipeHeight = IMAGES['pipe'][0].get_height()
         pipeX = SCREENWIDTH + 10
         pipeY_upper = gapY - pipeHeight

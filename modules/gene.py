@@ -22,12 +22,12 @@ class Gene(object):
         self.enabled = enabled
 
         if weight is None:
-            weight = np.random.uniform(-1, 1)
+            weight = np.random.uniform() * 4.0 - 2.0
         self.weight = weight
 
 
     def __repr__(self):
-        return "{}".format(self.innovation_number)
+        return "Innovation Number {} \n \t\t\t Input: {} -- Output: {}\n".format(self.innovation_number, self.input_neuron_id, self.output_neuron_id)
 
 
     def copy(self):

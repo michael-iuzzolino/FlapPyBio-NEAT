@@ -9,9 +9,10 @@ class Neuron(object):
 
         self.input = 0.0
         self.output = 0.0
-    
+
 
     def activate(self):
+        # Sigmoid
         self.output = 2.0 / (1.0 + np.exp(-4.9 * self.input)) - 1.0
         self.__inactivate()
 

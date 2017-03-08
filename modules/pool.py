@@ -2,17 +2,23 @@ from modules.config import *
 from modules.species import Species
 import numpy as np
 
+from FlapPyBird.flappy import FlappyBirdApp
 
 class Pool(object):
 
     def __init__(self):
 
-        LUCA = Species()
-        self.species = [LUCA]
+        # Create the initial species
+        initial_species = Species()
 
+        # Set initial species into object list
+        self.species = [initial_species]
+
+        # Initialize pool genration to 0
         self.generation = 0
-        self.max_fitness = 0.0
 
+        # Initialize a dictionary to track the top organism
+        self.max_fitness = {"organism" : {"object" : None, "fitness" : None}}
 
 
     def __repr__(self):
@@ -23,42 +29,172 @@ class Pool(object):
         for species in self.species:
             yield species
 
-    def __prime_selection(self):
-        self.cull()
 
-        # 2. Rank globally
-        self.rank_globally()
-
-        # 3. Remove stale species
-        self.remove_stale_species()
-
-        # 4. Rank globally
-        self.rank_globally()
-
-        # 5. Remove weak species
-        self.remove_weak_species()
-
-
-
-    def cull(self, cull_to_one=False):
+    def fitness(self):
         """
-            Cull
-            ----
+            Fitness
+            -------
+            Each species in the pool is iterated over.
+            They are passed into the FlappyBird App,
+                and the game is played for all organisms in that species simultaneously.
+
+            Flappy generates "crash_info", from which we obtain the
+                1. organism,
+                2. its expended energy during play, and
+                3. its distance traveled during play
+
+            Using the organism's energy and distance, a fitness measure is generated and assigned to the organism
+
         """
+
+        # Iterate through the species in the list
+        for species in self.species:
+
+            # ================ PLAY FLAPPYBIRD ====================
+            flappy = FlappyBirdApp(species, self.generation)
+            flappy.play()
+            # =====================================================
+
+            for bird_results in flappy.crash_info:
+
+                # ====== Results per organism =======
+                organism = bird_results['network']
+                energy = bird_results['energy']
+                distance = bird_results['distance']
+                # ===================================
+
+                # ======== INTERFACE WITH VIS ========
+
+                print(organism)
+                # ===================================
+
+                # Determine the organism's fitness
+                # ============ FITNESS FUNCTION ================
+                fitness = distance - energy * 1.5
+                # ==============================================
+
+                # Assign the fitness to the organism
+                organism.fitness = fitness if fitness > 0 else -1.0
+
+
+                # =============== Pool's Max Fitness ===============
+                # First, check if max fitness dict is empty.
+                #   If so, assign the first organism and its fitness
+                pool_max_organism = self.max_fitness['organism']
+                if not pool_max_organism['fitness']:
+                    pool_max_organism['object'] = organism
+                    pool_max_organism['fitness'] = organism.fitness
+
+                # Check if current organism has higher fitness than pool's all-time max
+                elif organism.fitness > pool_max_organism['fitness']:
+                    pool_max_organism['object'] = organism
+                    pool_max_organism['fitness'] = organism.fitness
+                # ==================================================
+
+            # Set the species intra rank and reorder the species organism list from top rank to lowest rank (0 to x, x being the lowest)
+            species.set_intra_species_rank()
+
+
+
+    def selection(self):
 
         for species in self.species:
-            number_to_survive = int(np.ceil(len(species) / 2.0)) if not cull_to_one else 1
-            survived_organisms = [organism for organism in species if organism.intra_species_rank < number_to_survive]
-            species.organisms = survived_organisms
+            # Determine number of organisms that will survive in the given species
+            number_to_survive = int(np.ceil(len(species) * FRACTION_SELECTED))
+
+            # Initialize species' parent list
+            species.parents = []
+
+            # Generate a list of the oranisms that survive
+            for organism in species:
+                if organism.intra_species_rank < number_to_survive:
+                    species.parents.append(organism)
+
+
+            # Generate average fitness for species
+            species.generate_average_fitness()
 
 
 
-    def rank_globally(self):
+    def replicate(self):
+
+        self.new_species = []
+
+        for species in self.species:
+
+            # Initialize species' child list with top parent (save the best organism)
+            species.progeny = [species.parents[0]]
+
+            remaining_progeny = POPULATION - len(species.progeny)
+            while remaining_progeny > 0:
+                progeny = species.mate()
+                self.__add_to_species(progeny)
+                remaining_progeny -= 1
+
+            print("Number of progeny: {}".format(len(species.progeny)))
+
+        self.__increment_generation()
+
+
+
+
+
+    def __increment_generation(self):
+        self.generation += 1
+        for species in self.species:
+            species.organisms = species.progeny
+
+
+        for new_species in self.new_species:
+            self.species.append(new_species)
+
+
+
+    def __cull_species(self):
+
+        # Remove the stale species from the pool
+        survived_species = []
+        for species in self.species:
+
+            # Determine CURRENT species' top organism
+            for organism in species:
+                if organism.intra_species_rank == 0:
+                    top_organism = organism
+                    break
+
+            # Compare CURRENT species top organism with the species' global top fitness
+            # Essentially, if a species is demonstrating improvement, keep it "fresh"
+            if top_organism.fitness > species.top_fitness:
+                species.top_fitness = top_organism.fitness
+                species.stale_index = 0
+
+            # Otherwise, if it decreases in performance, increase its stale index
+            else:
+                species.stale_index += 1
+
+            # If the stale index is below threshold, save the species and pass to next gen
+            pool_max_organism_fitness = self.max_fitness['organism']['fitness']
+            if (species.stale_index < SPECIES_STALE_INDEX_THRESHOLD) or (species.top_fitness >= pool_max_organism_fitness):
+                survived_species.append(species)
+
+        # Delete the current list of species and update it with the survived species
+        self.species = survived_species
+
+
+
+
+
+
+
+
+    def __rank_globally(self):
 
         # Generate list of all organisms in pool
         global_organisms = []
         for species in self.species:
-            global_organisms += species.organisms
+            for organism in species:
+                global_organisms.append(organism)
+
 
         # Get unsorted ranks
         dtype = [('id', int), ('fitness', float)]                               # Initialize items needed for numpy sorting
@@ -69,94 +205,29 @@ class Pool(object):
         species_fitness = np.array(unsorted_rankings, dtype=dtype)              # Cast unsorted into np array for sorting
         sorted_rankings = np.sort(species_fitness, order='fitness')[::-1]             # Sort species by fitness
 
-
         for rank, (organism_id, fitness) in enumerate(sorted_rankings):   # Rank the sorted species
             organism_id_mapping[organism_id].global_rank = rank
+            if not rank:
+                print(organism_id_mapping[organism_id])
 
 
-    def remove_stale_species(self):
-        survived_species = []
+
+
+    def __total_average_fitness(self):
+        total_average = 0.0
         for species in self.species:
+            total_average += species.average_fitness
 
-            for organism in species:
-                if organism.intra_species_rank == 0:
-                    top_organism = organism
-                    break
-
-            if top_organism.fitness > species.top_fitness:
-                species.top_fitness = top_organism.fitness
-                species.stale_index = 0
-            else:
-                species.stale_index += 1
-
-            if (species.stale_index < SPECIES_STALE_INDEX_THRESHOLD) or (species.top_fitness >= self.max_fitness):
-                survived_species.append(species)
-
-        del self.species
-        self.species = survived_species
+        return total_average
 
 
 
-
-    def remove_weak_species(self):
-        survived_species = []
-
-        total_average_fitness = self.total_average_fitness()
-
-        for species in self.species:
-            breed = int(np.floor(species.average_fitness / total_average_fitness * POPULATION))
-            print("BREED: {}".format(breed))
-            if breed >= WEAK_BREED_THRESHOLD:
-                survived_species.append(species)
-
-        self.species = survived_species
-
-
-    def total_average_fitness(self):
-        total = 0.0
-        for species in self.species:
-            species.generate_average_fitness()
-            total += species.average_fitness
-        return total
-
-
-    def selection(self):
-
-        self.__prime_selection()
-
-        total_average_fitness = self.total_average_fitness()
-        self.progeny = []
-
-        for species in self.species:
-            breeds = int(np.floor(species.average_fitness / total_average_fitness * POPULATION) - 1.0)
-            print("\tSpecies {} -- Breeds: {}".format(species.ID, breeds))
-            for breed in range(breeds):
-                self.progeny.append(species.mate())
-            print("\n")
-        # cull
-        self.cull(True)
-
-
-
-    def replicate(self):
-        print("len progeny: {}\t----\tlen species: {}".format(len(self.progeny), len(self.species)) )
-        while len(self.progeny) + len(self.species) < POPULATION:
-            random_species_index = np.random.randint(len(self.species))
-            random_species = self.species[random_species_index]
-            self.progeny.append(random_species.mate())
-
-        for new_organism in self.progeny:
-            self.add_to_species(new_organism)
-
-
-        self.generation += 1
-
-
-    def add_to_species(self, new_organism):
+    def __add_to_species(self, new_organism):
         for species in self.species:
             if species.is_compatible(new_organism):
-                species.organisms.append(new_organism)
+                species.progeny.append(new_organism)
                 return
 
+        # Speciation! New organism was not matched to any extant species.
         new_species = Species(new_species=True, initial_organism=new_organism)
-        self.species.append(new_species)
+        self.new_species.append(new_species)

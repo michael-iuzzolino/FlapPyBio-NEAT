@@ -76,7 +76,6 @@ class Genome(object):
 
         for innovation_number, (input_id, output_id) in Genome.innovation_dictionary.items():
             if new_input_id == input_id and new_output_id == output_id:
-                # print("MATCH -- INs: {} to {} -- OUTs: {} to {}".format(new_input_id, input_id, new_output_id, output_id))
                 return innovation_number
 
         innovation_numbers = [key for key in Genome.innovation_dictionary.keys()]
@@ -85,14 +84,13 @@ class Genome(object):
 
         return new_innovation_number
 
+
     def __generate_connection_matrix(self, progeny_neurons, progeny_genes):
         new_connection_matrix = np.zeros((len(progeny_neurons), len(progeny_neurons)))
         for gene in progeny_genes:
             input_index = gene.input_neuron_id
             output_index = gene.output_neuron_id
-            # print("input index: {}\toutput index: {}\n".format(input_index, output_index))
             new_connection_matrix[input_index][output_index] = 1
-        # print("\n")
 
         return new_connection_matrix
 
@@ -177,8 +175,7 @@ class Genome(object):
         for parent_1_gene in parent_1_genes:
             gene_1_innovation = parent_1_gene.innovation_number
 
-            gene_1_matched = False
-            for gene_2_index, parent_2_gene in enumerate(parent_2_genes):
+            for parent_2_gene in parent_2_genes:
                 gene_2_innovation = parent_2_gene.innovation_number
 
                 if gene_1_innovation == gene_2_innovation:
@@ -188,7 +185,12 @@ class Genome(object):
                         break
 
             new_gene = parent_1_gene.copy()
+
             progeny_genes.append(new_gene)
+
+
+
+
 
         # 2. Create new neuron dictionary from new connection genes
         parent_1_neurons = set([neuron_ID for neuron_ID in self.neurons.keys()])
@@ -205,6 +207,8 @@ class Genome(object):
 
         # 4. Create new genome
         new_genome = Genome(progeny_neurons, progeny_genes, progeny_connection_matrix)
+
+
 
         return new_genome
 
@@ -236,24 +240,30 @@ class Genome(object):
         """
 
         connection_weight_mutation_chance = self.__mutation_chance()
-        if connection_weight_mutation_chance <= CONNECTION_WEIGHT_MUTATION_RATE:
+        mut_rate = CONNECTION_WEIGHT_MUTATION_RATE*0.95 if np.random.randint(2) == 0 else CONNECTION_WEIGHT_MUTATION_RATE*1.05
+        if connection_weight_mutation_chance <= mut_rate:
             self.__mutate_weights()                                                 # Weight mutations
 
         enable_mutation_chance = self.__mutation_chance()
-        if enable_mutation_chance <= ENABLE_MUTATION_RATE:
+        mut_rate = ENABLE_MUTATION_RATE*0.95 if np.random.randint(2) == 0 else ENABLE_MUTATION_RATE*1.05
+        if enable_mutation_chance <= mut_rate:
             self.__mutate_enable(enable=True)
 
         disable_mutation_chance = self.__mutation_chance()
-        if disable_mutation_chance <= DISABLE_MUTATION_RATE:
+        mut_rate = DISABLE_MUTATION_RATE*0.95 if np.random.randint(2) == 0 else DISABLE_MUTATION_RATE*1.05
+        if disable_mutation_chance <= mut_rate:
             self.__mutate_enable(enable=False)
 
         connection_mutation_chance = self.__mutation_chance()
-        if connection_mutation_chance <= CONNECTION_MUTATION_RATE:
+        mut_rate = CONNECTION_MUTATION_RATE*0.95 if np.random.randint(2) == 0 else CONNECTION_MUTATION_RATE*1.05
+        if connection_mutation_chance <= mut_rate:
             self.__mutate_connections()                                             # Connection mutations
 
         neuron_mutation_chance = self.__mutation_chance()
-        if neuron_mutation_chance <= NEURON_MUTATION_RATE:
+        mut_rate = NEURON_MUTATION_RATE*0.95 if np.random.randint(2) == 0 else NEURON_MUTATION_RATE*1.05
+        if neuron_mutation_chance <= mut_rate:
             self.__mutate_nodes()                                                   # Node mutations
+
 
     def __mutate_enable(self, enable):
         candidate_genes = []
@@ -268,6 +278,7 @@ class Genome(object):
         random_candidate_gene = candidate_genes[random_candidate_index]
         random_candidate_gene.enabled = not gene.enabled
 
+
     def __mutate_weights(self):
 
         # Check every gene for chance of weight mutation
@@ -276,10 +287,11 @@ class Genome(object):
             weight_mutation_chance = self.__mutation_chance()
 
             # Check for uniform mutation
+            step_size = STEP_SIZE*.95 if np.random.randint(2) == 0 else STEP_SIZE*1.05
             if weight_mutation_chance <= WEIGHT_MUTATION_RATE:
-                gene.weight += np.random.uniform(-1, 1) * STEP_SIZE * 2.0
+                gene.weight += (np.random.uniform() * step_size * 2.0 - step_size) * WEIGHT_MUT_FACTOR
             else:
-                gene.weight = np.random.uniform(-1, 1)
+                gene.weight = np.random.uniform() * 4.0 - 2.0
 
 
 
@@ -302,9 +314,6 @@ class Genome(object):
             Mutating a connection means
                 1. Adding a new link between previously unlinked nodes (e.g., valid cells in connection_matrix = 0 can be set to 1)
         """
-        # print("\tMutation: Connection")
-        # print("\t--------------------")
-        # print("\n")
 
         valid_connections = []
         for row_index, row in enumerate(self.connection_matrix):
@@ -321,7 +330,6 @@ class Genome(object):
                     valid_connections.append((row_index, col_index))
 
         if not valid_connections:
-            # print("\t\tNo new connections to make.")
             return
 
 
@@ -338,12 +346,10 @@ class Genome(object):
             gene_output_id = gene.output_neuron_id
             if input_id == gene_input_id and output_id == gene_output_id:
                 if gene.enabled == False:
-                    # print("\t\tRe-enabling Connection")
                     gene.enabled = True
                     self.connection_matrix[gene_input_id][gene_output_id] = 1
                     return
 
-        # print("\t\tCreating new connection between nodes {} and {}".format(input_id, output_id))
 
         # Generate innovation number!
         innovation_number = self.__generate_innovation_number(input_id, output_id)
@@ -361,13 +367,14 @@ class Genome(object):
 
 
 
+
     def __mutate_nodes(self):
-        # print("\tMutation: Node")
-        # print("\t--------------")
-        # print("\n")
+
 
         # Create new neuron
         new_neuron_id = self.__next_neuron_id()
+
+
         new_neuron = Neuron(neuron_id=new_neuron_id)
         self.neurons[new_neuron_id] = new_neuron
 
@@ -408,9 +415,6 @@ class Genome(object):
 
 
 
-
-
-
         # Deactivate old connection in connection genome
         for gene in self.genes:
             gene_input_id = gene.input_neuron_id
@@ -427,10 +431,10 @@ class Genome(object):
 
         # Create 2 new connection genes
         # Gene 1
-        # print("\t\tCreating new connection between nodes {} and {}".format(input_id, new_neuron_id))
 
         # Generate innovation number!
         innovation_number_1 = self.__generate_innovation_number(input_id, new_neuron_id)
+
         new_gene_1 = Gene(innovation_number=innovation_number_1,
                         input_neuron_id=input_id,
                         output_neuron_id=new_neuron_id,
@@ -440,12 +444,11 @@ class Genome(object):
         # Update connection matrix
         self.connection_matrix[input_id][new_neuron_id] = 1
 
+
         # Gene 2
-        # print("\t\tCreating new connection between nodes {} and {}".format(new_neuron_id, output_id))
-
-
         # Generate innovation number!
         innovation_number_2 = self.__generate_innovation_number(new_neuron_id, output_id)
+
         new_gene_2 = Gene(innovation_number=innovation_number_2,
                           input_neuron_id=new_neuron_id,
                           output_neuron_id=output_id,
@@ -453,20 +456,3 @@ class Genome(object):
         self.genes.append(new_gene_2)
         # Update connection matrix
         self.connection_matrix[new_neuron_id][output_id] = 1
-
-        # print("New Connection Matrix")
-        # print("{}".format(self.connection_matrix))
-
-        # self.__gene_error_check()
-
-
-    def __gene_error_check(self):
-        innovation_dict = { gene.innovation_number : 0 for gene in self.genes }
-        for gene in self.genes:
-            gene_innovation = gene.innovation_number
-            innovation_dict[gene_innovation] += 1
-
-        for inno_id, count in innovation_dict.items():
-            if count > 1:
-                print("ERROR ERROR ERROR")
-                print("genes: {}".format(self.genes))

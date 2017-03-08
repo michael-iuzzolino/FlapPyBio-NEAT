@@ -27,6 +27,9 @@ class Bird(object):
         self.flapped = False
 
 
+    def __repr__(self):
+        return "{}".format(self.neural_network)
+
     def next(self):
         self.index = next(self.playerIndexGen)
 
@@ -35,11 +38,16 @@ class Bird(object):
 
         # Setup the input layer
         X = [0 for _ in range(6)]
-        X[0] = self.y / SCREENHEIGHT
-        X[1] = pipes.upper[0]['x'] / SCREENWIDTH
-        X[2] = pipes.upper[0]['y'] / SCREENHEIGHT
-        X[3] = pipes.upper[1]['x'] / SCREENWIDTH
-        X[4] = pipes.upper[1]['y'] / SCREENHEIGHT
+        # X[0] = self.y / SCREENHEIGHT
+        # X[1] = pipes.upper[0]['x'] / SCREENWIDTH
+        # X[2] = pipes.upper[0]['y'] / SCREENHEIGHT
+        # X[3] = pipes.upper[1]['x'] / SCREENWIDTH
+        # X[4] = pipes.upper[1]['y'] / SCREENHEIGHT
+        X[0] = self.y
+        X[1] = pipes.upper[0]['x']
+        X[2] = pipes.upper[0]['y']
+        X[3] = pipes.upper[1]['x']
+        X[4] = pipes.upper[1]['y']
         X[5] = 1
         # Feed the neural network information
         self.neural_network.learn(X)
